@@ -18,4 +18,4 @@ class_name = "Lobby"
 
 [[migrations]]
 new_sqlite_classes = ["ChessRoom", "Lobby"]
-tag = "v2"
+tag = "v3"
