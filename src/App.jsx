@@ -26,6 +26,7 @@ function formatTime(sec) {
 
 export default function App() {
   const  = useState({ name: 'Themba Ndhlovu', username: 'Pazed200' });
+
   const [balance, setBalance] = useState(900);
   const [view, setView] = useState('home');
   const [tournaments, setTournaments] = useState(FALLBACK_ARENAS);
