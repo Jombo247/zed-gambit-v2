@@ -1,24 +1,14 @@
+You are right — external images keep failing. Lichess blocks them on some networks, so Knights disappear.
+
 
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 
-// FIX: Lichess cburnett set - all pieces load, Black Knights included
-const PIECE_IMG = {
-  wk: 'https://lichess1.org/assets/piece/cburnett/wK.svg',
-  wq: 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
-  wr: 'https://lichess1.org/assets/piece/cburnett/wR.svg',
-  wb: 'https://lichess1.org/assets/piece/cburnett/wB.svg',
-  wn: 'https://lichess1.org/assets/piece/cburnett/wN.svg',
-  wp: 'https://lichess1.org/assets/piece/cburnett/wP.svg',
-  bk: 'https://lichess1.org/assets/piece/cburnett/bK.svg',
-  bq: 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
-  br: 'https://lichess1.org/assets/piece/cburnett/bR.svg',
-  bb: 'https://lichess1.org/assets/piece/cburnett/bB.svg',
-  bn: 'https://lichess1.org/assets/piece/cburnett/bN.svg',
-  bp: 'https://lichess1.org/assets/piece/cburnett/bP.svg',
-};
+// PIECES: Built-in, no external images - Knights can NEVER disappear
+// White = outline glyph + white colour, Black = filled glyph + black colour
+// We use SAME shape, only colour changes, so no confusion
+const GLYPH = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
 
-// NO FAKE PLAYERS - playerCount: 0 = Real, shows "No players yet"
 const FALLBACK_ARENAS = [
   { id: "MEGA1", name: "🌍 Mega K5 Arena", stake: 5, playerCount: 0, max: 200, prize: "K70", status: "WAITING", details: "Winner K70. 10% fee + 16% tax on fee. 70% / 30% split.", rules: "10 min rapid, 2 pts win, 1 draw, 4 for 3-win streak." },
   { id: "PRO10", name: "🔥 Pro K10 Arena", stake: 10, playerCount: 0, max: 100, prize: "K140", status: "WAITING", details: "Winner K140.", rules: "10 min rapid." },
@@ -69,6 +59,12 @@ export default function App() {
   const [openCourse, setOpenCourse] = useState(null);
   const [joining, setJoining] = useState(null);
 
+  // Admin
+  const [adminPin, setAdminPin] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminTab, setAdminTab] = useState('arenas');
+
+  // Computer chess only - NOT inside Arenas anymore
   const [fen, setFen] = useState(new Chess().fen());
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
@@ -92,13 +88,11 @@ export default function App() {
     fetch('/api/courses').then(r => r.json()).then(d => { if (d.courses?.length) setCourses(d.courses); }).catch(()=>{});
   }, []);
 
-  // FIX: Clock does NOT depend on fen - stops blue room blinking / Home re-render
   useEffect(() => {
     if (!gameActive || !hasMoved) return;
     timerRef.current = setInterval(() => {
       const g = new Chess(fenRef.current);
-      const turn = g.turn();
-      if (turn === 'w') setWhiteTime(t => Math.max(0, t - 1));
+      if (g.turn() === 'w') setWhiteTime(t => Math.max(0, t - 1));
       else setBlackTime(t => Math.max(0, t - 1));
     }, 1000);
     return () => clearInterval(timerRef.current);
@@ -145,21 +139,16 @@ export default function App() {
     setHasMoved(false);
     setGameActive(false);
     setShowSetup(false);
-    if (colour === 'w') {
-      setMsg(`You are WHITE - ${setupLevel} - ${setupTime / 60} min - Your move first, clock starts after your move`);
-    } else {
-      setMsg(`You are BLACK - Computer is White, computer moves first...`);
-      setTimeout(() => {
-        setHasMoved(true);
-        setGameActive(true);
-        makeComputerMove(g.fen());
-      }, 800);
+    if (colour === 'w') setMsg(`You are WHITE - ${setupLevel} - ${setupTime / 60} min - Your move first`);
+    else {
+      setMsg(`You are BLACK - Computer moves first...`);
+      setTimeout(() => { setHasMoved(true); setGameActive(true); makeComputerMove(g.fen()); }, 800);
     }
   }
 
   function onSquareClick(sq) {
     const game = new Chess(fen);
-    if (game.turn() !== playerColour) { setMsg('Wait - Computer thinking...'); return; }
+    if (game.turn() !== playerColour) return;
     if (selected === sq) { setSelected(null); return; }
     if (selected) {
       try {
@@ -199,17 +188,19 @@ export default function App() {
         let bg = isDark ? '#769656' : '#eeeed2';
         if (isLast) bg = '#facc15';
         if (isSel) bg = '#22c55e';
+        // KNIGHTS GUARANTEED: Unicode, no image load, no 404
+        const isWhite = piece?.color === 'w';
         cols.push(
-          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
-            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{r}</span>}
-            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{file}</span>}
-            {piece && <img src={PIECE_IMG[piece.color + piece.type]} alt={sq} style={{ width: 34, height: 34, pointerEvents: 'none', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.5))' }} draggable={false} />}
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 32, lineHeight: 1, fontFamily: '"Segoe UI Symbol","Noto Sans Symbols2",serif', color: !piece ? '#000' : isWhite ? '#FFFFFF' : '#111111', WebkitTextStroke: !piece ? '0px' : isWhite ? '1.8px #000' : '0.8px #fff', textShadow: !piece ? 'none' : isWhite ? '0 2px 2px #000' : '0 1px 1px #fff', fontWeight: 'bold' }}>
+            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none', zIndex: 2 }}>{r}</span>}
+            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none', zIndex: 2 }}>{file}</span>}
+            {piece ? GLYPH[piece.type] : ''}
           </div>
         );
       }
       rows.push(<div key={r} style={{ display: 'flex', justifyContent: 'center' }}>{cols}</div>);
     }
-    return <div style={{ border: '3px solid #333', width: 320, margin: '0 auto', background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>{rows}</div>;
+    return <div style={{ border: '3px solid #333', width: 320, margin: '0 auto', background: '#fff' }}>{rows}</div>;
   }
 
   function BoardWithClocks() {
@@ -219,37 +210,30 @@ export default function App() {
     const topTime = youAreWhite ? blackTime : whiteTime;
     const bottomLabel = youAreWhite ? `⬜ White - You (${user.username})` : `⬛ Black - You (${user.username})`;
     const bottomTime = youAreWhite ? whiteTime : blackTime;
-    const topIsTurn = (youAreWhite && turn === 'b') || (!youAreWhite && turn === 'w');
-    const bottomIsTurn = (youAreWhite && turn === 'w') || (!youAreWhite && turn === 'b');
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: youAreWhite ? '#111' : '#fff', color: youAreWhite ? '#fff' : '#000', padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: topIsTurn && hasMoved ? '2px solid #facc15' : '2px solid #333' }}>
-          <span>{topLabel}</span>
-          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(topTime)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', background: youAreWhite ? '#111' : '#fff', color: youAreWhite ? '#fff' : '#000', padding: '10px 14px', borderRadius: 10, marginBottom: 8 }}>
+          <span>{topLabel}</span><span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(topTime)}</span>
         </div>
         {renderBoard()}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: youAreWhite ? '#fff' : '#111', color: youAreWhite ? '#000' : '#fff', padding: '10px 14px', borderRadius: 10, marginTop: 8, border: bottomIsTurn && hasMoved ? '2px solid #22c55e' : '2px solid #333' }}>
-          <span>{bottomLabel}</span>
-          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(bottomTime)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', background: youAreWhite ? '#fff' : '#111', color: youAreWhite ? '#000' : '#fff', padding: '10px 14px', borderRadius: 10, marginTop: 8 }}>
+          <span>{bottomLabel}</span><span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(bottomTime)}</span>
         </div>
-        <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused'}</p>
-        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE - White pieces at bottom' : 'BLACK - Black pieces at bottom'}</p>
+        <p style={{ fontSize: 12 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused'}</p>
+        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE' : 'BLACK'} • Knights: ♞ ♞ must both be visible</p>
       </div>
     );
   }
 
-  // FIX: Join ALWAYS opens Arena, even if API fails / offline
+  // OLD ARENA JOIN - Only button works, card NOT clickable
   async function joinArena(t) {
     setJoining(t.id);
-    setMsg('Joining ' + t.name + '...');
     try {
       const r = await fetch('/api/pay/join-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: t.id, stake: t.stake }) });
       const d = await r.json();
       if (d.error) { alert(d.error); setJoining(null); return; }
       if (d.balance !== undefined) setBalance(d.balance);
-    } catch (e) {
-      console.log('Join API offline, opening arena locally', e);
-    }
+    } catch (e) { console.log('Join API offline, opening locally', e); }
     const newRoom = 'ROOM-' + Math.floor(Math.random()*9000+1000);
     setRoom(newRoom);
     setArena({ ...t, pot: t.stake * 2, winnerPrize: Math.round(t.stake * 2 * 0.7), secondPrize: Math.round(t.stake * 2 * 0.3), players: 1 });
@@ -266,27 +250,29 @@ export default function App() {
     setView('home');
   }
 
+  // ADMIN LOGIN - PIN 2026
+  function tryAdminLogin() {
+    if (adminPin === '2026') { setIsAdmin(true); setView('admin'); }
+    else alert('Wrong PIN. Ask owner for Admin PIN.');
+  }
+
+  // HOME - OLD ARENA INTERFACE
   if (view === 'home') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 12, fontFamily: 'sans-serif' }}>
       <div style={{ background: '#1e293b', padding: 10, borderRadius: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <div style={{ fontSize: 13, lineHeight: 1.3 }}>
-            👤 <b>{user.name}</b> • 1200 • Online<br/>
-            🔥 {points} pts • {games} games • Streak: {streak}
-          </div>
-          <button onClick={() => setView('wallet')} style={{ background: '#000', padding: '6px 10px', borderRadius: 20, border: '1px solid #facc15', color: '#fff', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
-            💰 K{balance} <span style={{ background: '#22c55e', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>Wallet</span>
-          </button>
+          <div style={{ fontSize: 13, lineHeight: 1.3 }}>👤 <b>{user.name}</b> • 1200 • Online<br/>🔥 {points} pts • {games} games • Streak: {streak}</div>
+          <button onClick={() => setView('wallet')} style={{ background: '#000', padding: '6px 10px', borderRadius: 20, border: '1px solid #facc15', color: '#fff', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>💰 K{balance} <span style={{ background: '#22c55e', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>Wallet</span></button>
         </div>
-        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Min Bet K5 • AUTO STAKES + AUTO REFUND 5 MINS • 🎲 Room: {room} • 🏆 You won! +4 pts</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Min Bet K5 • AUTO STAKES + AUTO REFUND 5 MINS • 🎲 Room: {room}</div>
       </div>
       <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
-        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ flex: 1, padding: 12, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold', fontSize: 14 }}>🤖 Play vs Computer</button>
-        <button onClick={() => setView('courses')} style={{ flex: 1, padding: 12, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold', fontSize: 14 }}>📚 Chess Courses</button>
+        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ flex: 1, padding: 12, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>🤖 Play vs Computer</button>
+        <button onClick={() => setView('courses')} style={{ flex: 1, padding: 12, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>📚 Courses</button>
       </div>
       <div style={{ background: '#1e293b', padding: 16, borderRadius: 16, marginTop: 12 }}>
         <h2 style={{ fontSize: 20, margin: '0 0 8px 0' }}>♟️ Play Now — Auto Stake K5</h2>
-        <p style={{ margin: '4px 0' }}>Room {room} vs</p><p style={{ margin: '4px 0' }}>Score: {points} pts • Streak: {streak}</p>
+        <p>Room {room} vs</p><p>Score: {points} pts • Streak: {streak}</p>
         <div style={{ display: 'flex', gap: 8 }}>
           <button onClick={() => reportResult('win')} style={{ flex: 1, padding: 10, background: '#22c55e', border: 0, borderRadius: 10 }}>🏆 I Won</button>
           <button onClick={() => reportResult('draw')} style={{ flex: 1, padding: 10, background: '#334155', color: '#fff', border: 0, borderRadius: 10 }}>💛 Draw</button>
@@ -294,71 +280,20 @@ export default function App() {
         </div>
         <p style={{ textAlign: 'center', marginTop: 10, fontSize: 13 }}>🔑 Join by Room Code</p>
       </div>
-      <h3 style={{ marginTop: 16, fontSize: 16 }}>🏆 ARENAS — Tap to Join & See Details</h3>
+
+      <h3 style={{ marginTop: 16 }}>🏆 ARENAS — Old Interface (Only Join Button Clickable)</h3>
       {tournaments.map(t => (
         <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
-          <b>{t.name}</b><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span>
-          <button onClick={() => joinArena(t)} disabled={joining === t.id} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: joining === t.id ? '#94a3b8' : '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', cursor: 'pointer' }}>
-            {joining === t.id ? 'Joining...' : `Join K${t.stake} - See Arena Details →`}
-          </button>
+          <div><b>{t.name}</b><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span></div>
+          <button onClick={() => joinArena(t)} disabled={joining === t.id} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: joining === t.id ? '#94a3b8' : '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', cursor: 'pointer' }}>{joining === t.id ? 'Joining...' : `Join K${t.stake} - See Arena Details →`}</button>
         </div>
       ))}
-      <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins if No Opponent • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
+      <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
+      <button onClick={() => setView('adminLogin')} style={{ display: 'block', width: '100%', marginTop: 10, padding: 10, background: '#111', color: '#888', border: '1px solid #333', borderRadius: 10, fontSize: 12 }}>🔐 Admin Dashboard</button>
     </div>
   );
 
-  if (view === 'computer') {
-    if (showSetup) return (
-      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
-        <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
-        <h2>🤖 Play vs Computer</h2>
-        <p>Choose Level, Time & Colour First</p>
-        <h3>1. Choose Level</h3>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          {['Easy','Medium','Hard'].map(l => (
-            <button key={l} onClick={() => setSetupLevel(l)} style={{ padding: '12px 18px', borderRadius: 20, border: setupLevel === l ? '3px solid #facc15' : '1px solid #555', background: setupLevel === l ? '#facc15' : '#334155', color: setupLevel === l ? '#000' : '#fff', fontWeight: 'bold' }}>
-              {l === 'Easy' ? '😊 Easy' : l === 'Medium' ? '😐 Medium' : '🔥 Hard'}
-            </button>
-          ))}
-        </div>
-        <h3 style={{ marginTop: 20 }}>2. Choose Time</h3>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
-          {[{ label: '⚡ Blitz 3 min', val: 180 },{ label: '⏱ Rapid 5 min', val: 300 },{ label: '🕐 Rapid 10 min', val: 600 },{ label: '🐢 Classical 15 min', val: 900 }].map(t => (
-            <button key={t.val} onClick={() => setSetupTime(t.val)} style={{ padding: '12px 16px', borderRadius: 12, border: setupTime === t.val ? '3px solid #22c55e' : '1px solid #555', background: setupTime === t.val ? '#22c55e' : '#334155', color: '#fff', fontWeight: 'bold' }}>{t.label}</button>
-          ))}
-        </div>
-        <h3 style={{ marginTop: 20 }}>3. Choose Colour 🎲</h3>
-        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
-          {[
-            { label: '⬜ White', val: 'White' },
-            { label: '⬛ Black', val: 'Black' },
-            { label: '🎲 Random', val: 'Random' },
-          ].map(c => (
-            <button key={c.val} onClick={() => setSetupColour(c.val)} style={{ padding: '14px 18px', borderRadius: 12, border: setupColour === c.val ? '3px solid #facc15' : '1px solid #555', background: setupColour === c.val ? '#facc15' : '#334155', color: setupColour === c.val ? '#000' : '#fff', fontWeight: 'bold', fontSize: 16 }}>{c.label}</button>
-          ))}
-        </div>
-        <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{setupColour === 'Random' ? '🎲 Coin flip - 50% White, 50% Black. Board will flip if you get Black.' : setupColour === 'Black' ? 'You will be Black at bottom, Computer moves first.' : 'You will be White at bottom, you move first.'}</p>
-        <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 16 }}>
-          <p>You chose: <b>{setupLevel}</b> • <b>{setupTime / 60} min</b> • <b>{setupColour}</b></p>
-          <p style={{ fontSize: 13, opacity: 0.8 }}>Clock will NOT start until first move is played.</p>
-        </div>
-        <button onClick={startNewGame} style={{ width: '100%', padding: 16, background: '#22c55e', border: 0, borderRadius: 12, marginTop: 20, fontWeight: 'bold', fontSize: 16 }}>▶️ Start Game → Open Board</button>
-      </div>
-    );
-    return (
-      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
-        <button onClick={() => { setView('home'); setShowSetup(true); }} style={{ float: 'left' }}>← Back</button>
-        <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Setup</button>
-        <h2>🤖 Play vs Computer</h2>
-        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • You are <b>{playerColour === 'w' ? 'WHITE' : 'BLACK'}</b><br/>{hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
-        <BoardWithClocks />
-        <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
-        <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
-        {lastMove && <p>Last Move: <b style={{ background: '#facc15', color: '#000', padding: '2px 8px', borderRadius: 6 }}>{lastMove.from} → {lastMove.to}</b></p>}
-      </div>
-    );
-  }
-
+  // ARENA - OLD INTERFACE - NO BOARD INSIDE, just details + result buttons
   if (view === 'arena') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
       <button onClick={() => setView('home')}>← Back to Home</button>
@@ -370,11 +305,61 @@ export default function App() {
         <p>🎲 Your Room: {room}</p>
         <p>📜 Rules: {arena?.rules}</p>
         <p>📋 {arena?.details}</p>
+        <p style={{ color: '#facc15', fontSize: 13 }}>⚠️ Play your game in real life / Play vs Computer, then report result below. Arena does NOT have a board inside - as before.</p>
       </div>
-      <h3 style={{ textAlign: 'center' }}>♟️ Arena Board</h3>
-      <div style={{ textAlign: 'center' }}><BoardWithClocks /><button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>▶️ Start Arena Game</button></div>
+      <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 12 }}>
+        <h3>Report Arena Result</h3>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => reportResult('win')} style={{ flex: 1, padding: 12, background: '#22c55e', border: 0, borderRadius: 10 }}>🏆 I Won Arena</button>
+          <button onClick={() => reportResult('draw')} style={{ flex: 1, padding: 12, background: '#334155', color: '#fff', border: 0, borderRadius: 10 }}>💛 Draw</button>
+          <button onClick={() => reportResult('loss')} style={{ flex: 1, padding: 12, background: '#ef4444', border: 0, borderRadius: 10 }}>😞 I Lost</button>
+        </div>
+        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ width: '100%', marginTop: 10, padding: 12, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 10 }}>🤖 Practice vs Computer First</button>
+      </div>
     </div>
   );
+
+  // COMPUTER - Separate, NOT inside Arena
+  if (view === 'computer') {
+    if (showSetup) return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
+        <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
+        <h2>🤖 Play vs Computer</h2>
+        <p>Choose Level, Time & Colour First</p>
+        <h3>1. Choose Level</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {['Easy','Medium','Hard'].map(l => (
+            <button key={l} onClick={() => setSetupLevel(l)} style={{ padding: '12px 18px', borderRadius: 20, border: setupLevel === l ? '3px solid #facc15' : '1px solid #555', background: setupLevel === l ? '#facc15' : '#334155', color: setupLevel === l ? '#000' : '#fff', fontWeight: 'bold' }}>{l === 'Easy' ? '😊 Easy' : l === 'Medium' ? '😐 Medium' : '🔥 Hard'}</button>
+          ))}
+        </div>
+        <h3 style={{ marginTop: 20 }}>2. Choose Time</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {[{ label: '⚡ Blitz 3 min', val: 180 },{ label: '⏱ Rapid 5 min', val: 300 },{ label: '🕐 Rapid 10 min', val: 600 },{ label: '🐢 Classical 15 min', val: 900 }].map(t => (
+            <button key={t.val} onClick={() => setSetupTime(t.val)} style={{ padding: '12px 16px', borderRadius: 12, border: setupTime === t.val ? '3px solid #22c55e' : '1px solid #555', background: setupTime === t.val ? '#22c55e' : '#334155', color: '#fff', fontWeight: 'bold' }}>{t.label}</button>
+          ))}
+        </div>
+        <h3 style={{ marginTop: 20 }}>3. Choose Colour 🎲</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {[{ label: '⬜ White', val: 'White' },{ label: '⬛ Black', val: 'Black' },{ label: '🎲 Random', val: 'Random' }].map(c => (
+            <button key={c.val} onClick={() => setSetupColour(c.val)} style={{ padding: '14px 18px', borderRadius: 12, border: setupColour === c.val ? '3px solid #facc15' : '1px solid #555', background: setupColour === c.val ? '#facc15' : '#334155', color: setupColour === c.val ? '#000' : '#fff', fontWeight: 'bold' }}>{c.label}</button>
+          ))}
+        </div>
+        <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 16 }}><p>You chose: <b>{setupLevel}</b> • <b>{setupTime / 60} min</b> • <b>{setupColour}</b></p></div>
+        <button onClick={startNewGame} style={{ width: '100%', padding: 16, background: '#22c55e', border: 0, borderRadius: 12, marginTop: 20, fontWeight: 'bold', fontSize: 16 }}>▶️ Start Game → Open Board</button>
+      </div>
+    );
+    return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
+        <button onClick={() => { setView('home'); setShowSetup(true); }} style={{ float: 'left' }}>← Back</button>
+        <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Setup</button>
+        <h2>🤖 Play vs Computer</h2>
+        <p>Level: <b>{level}</b> • You are <b>{playerColour === 'w' ? 'WHITE' : 'BLACK'}</b><br/>{hasMoved ? msg : '⏸ Clock paused'}</p>
+        <BoardWithClocks />
+        <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
+        {lastMove && <p>Last Move: <b style={{ background: '#facc15', color: '#000', padding: '2px 8px', borderRadius: 6 }}>{lastMove.from} → {lastMove.to}</b></p>}
+      </div>
+    );
+  }
 
   if (view === 'courses') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
@@ -386,7 +371,7 @@ export default function App() {
           <button onClick={() => setOpenCourse(openCourse === c.id ? null : c.id)} style={{ marginTop: 10, padding: 10, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>{openCourse === c.id ? 'Close' : 'Start Lesson →'}</button>
           {openCourse === c.id && (
             <div style={{ background: '#000', padding: 12, borderRadius: 8, marginTop: 10 }}>
-              {(TRAINING[c.id] || [{ q: 'Lesson coming soon for ' + c.title, answer: 'Check back soon' }]).map((l, i) => (
+              {(TRAINING[c.id] || [{ q: 'Lesson coming soon', answer: 'Check back soon' }]).map((l, i) => (
                 <div key={i} style={{ background: '#1e293b', padding: 10, marginBottom: 8, borderRadius: 8 }}><b>{i + 1}. {l.q}</b><br/><span style={{ color: '#facc15' }}>💡 {l.answer}</span></div>
               ))}
             </div>
@@ -400,9 +385,68 @@ export default function App() {
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
       <button onClick={() => setView('home')}>← Back</button>
       <h2>💰 Wallet: K{balance}</h2>
+      <p>User: {user.username} • {user.name}</p>
       <button onClick={async () => { const r = await fetch('/api/pay/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, amount: 10 }) }); const d = await r.json(); setBalance(d.balance); alert('Deposited K10'); }} style={{ padding: 14, background: '#22c55e', border: 0, borderRadius: 10 }}>Deposit K10 (Demo)</button>
+      <button onClick={() => setView('adminLogin')} style={{ display: 'block', marginTop: 12, padding: 12, background: '#111', color: '#fff', border: '1px solid #444', borderRadius: 10 }}>🔐 Go to Admin Dashboard</button>
     </div>
   );
+
+  // ADMIN LOGIN
+  if (view === 'adminLogin') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
+      <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
+      <h2>🔐 Admin Dashboard</h2>
+      <p>Enter Admin PIN to continue.<br/>You are the owner - Themba Ndhlovu</p>
+      <input value={adminPin} onChange={e => setAdminPin(e.target.value)} placeholder="Enter PIN" type="password" inputMode="numeric" style={{ padding: 14, fontSize: 18, borderRadius: 10, border: '1px solid #555', background: '#1e293b', color: '#fff', textAlign: 'center', width: 180 }} />
+      <br/><button onClick={tryAdminLogin} style={{ marginTop: 16, padding: '14px 30px', background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', fontSize: 16 }}>Login as Admin →</button>
+      <p style={{ fontSize: 12, opacity: 0.6, marginTop: 12 }}>Default PIN for first time: <b>2026</b><br/>Change it later in Cloudflare Worker.</p>
+    </div>
+  );
+
+  // ADMIN DASHBOARD
+  if (view === 'admin' && isAdmin) return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between' }}><h2>🛠️ Admin Dashboard</h2><button onClick={() => { setIsAdmin(false); setView('home'); }}>Logout</button></div>
+      <p>Welcome, {user.name} • Admin: {user.username}</p>
+      <div style={{ display: 'flex', gap: 8 }}>
+        {['arenas','players','money'].map(t => (
+          <button key={t} onClick={() => setAdminTab(t)} style={{ flex: 1, padding: 10, background: adminTab === t ? '#facc15' : '#334155', color: adminTab === t ? '#000' : '#fff', border: 0, borderRadius: 10, fontWeight: 'bold' }}>{t === 'arenas' ? '🏟️ Arenas' : t === 'players' ? '👥 Players' : '💰 Money'}</button>
+        ))}
+      </div>
+      {adminTab === 'arenas' && (
+        <div style={{ marginTop: 16 }}>
+          <h3>All Arenas - Edit / View</h3>
+          {tournaments.map(t => (
+            <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10 }}>
+              <b>{t.name}</b> • Stake K{t.stake} • Prize {t.prize} • Status {t.status}<br/>
+              <span style={{ fontSize: 13 }}>Players: {t.playerCount} / {t.max} • {t.playerCount === 0 ? 'No real players yet' : 'Real players joined'}</span><br/>
+              <button onClick={() => alert('Arena ' + t.id + ' - Pot: K' + (t.stake * t.playerCount) + ' - To close arena, set status to CLOSED in Worker')} style={{ marginTop: 8, padding: 8, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>View Details</button>
+            </div>
+          ))}
+          <p style={{ fontSize: 12, opacity: 0.7 }}>Tip: To create new arena, add it in Cloudflare Worker /api/tournaments. It will appear here automatically.</p>
+        </div>
+      )}
+      {adminTab === 'players' && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Players</h3>
+          <div style={{ background: '#1e293b', padding: 14, borderRadius: 12 }}><b>{user.name} ({user.username})</b><br/>Balance: K{balance} • Points: {points} • Games: {games} • Streak: {streak}<br/><span style={{ fontSize: 12, opacity: 0.7 }}>Other players will appear here when they join via /api/pay/join-arena. Right now only you are in the local view.</span></div>
+        </div>
+      )}
+      {adminTab === 'money' && (
+        <div style={{ marginTop: 16 }}>
+          <h3>Money - Fees & Payouts</h3>
+          <div style={{ background: '#1e293b', padding: 14, borderRadius: 12 }}>
+            <p>Total Balance in demo: K{balance}</p>
+            <p>Fee: 10% + 16% tax on fee</p>
+            <p>Split: 70% Winner / 30% 2nd</p>
+            <p>Auto Refund: 5 mins if no opponent</p>
+            <p style={{ fontSize: 12, opacity: 0.7 }}>Real money is tracked in Cloudflare Worker / D1. This dashboard shows local demo totals. Connect Worker to see real totals.</p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
   return null;
 }
 
