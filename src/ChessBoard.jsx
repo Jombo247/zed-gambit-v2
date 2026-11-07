@@ -1,4 +1,5 @@
-import { useState } from 'react'
+jsx
+import{ useState } from 'react'
 import { Chess } from 'chess.js'
 
 const PIECES = {
