@@ -16,7 +16,7 @@ export default function ChessBoard() {
     return () => clearInterval(id)
   }, [game, over])
   const reset = (m) => { const mm = m || mode; setGame(new Chess()); setSel(null); setMode(mm); setWt(600); setBt(600); setStatus(mm === 'computer' ? 'You (White) vs Computer' : 'Friend Mode - White to move') }
-  const cpu = (g) => { const ms = g.moves({ verbose: true }); if (!ms.length) return; g.move(ms[Math.floor(Math.random() * ms.length)]); setGame(new Chess(g.fen())); setStatus(g.isCheckmate() ? 'Checkmate! Computer wins' : g.isDraw() ? 'Draw!' : 'Your turn - White') }
+    if (!ms.length) return; g.move(ms[Math.floor(Math.random() * ms.length)]); setGame(new Chess(g.fen())); setStatus(g.isCheckmate() ? 'Checkmate! Computer wins' : g.isDraw() ? 'Draw!' : 'Your turn - White') }
   const click = (sq) => {
     if (mode === 'computer' && game.turn() === 'b') return
     if (sel) {
@@ -25,7 +25,8 @@ export default function ChessBoard() {
         const g = new Chess(game.fen()); g.move(mv); setSel(null); setGame(g)
         if (g.isCheckmate()) { setStatus('Checkmate!'); const lb = JSON.parse(localStorage.getItem('zed_leaderboard') || '{"wins":0,"losses":0,"draws":0,"rating":1200}'); const youWon = g.turn() === 'b'; lb.wins += youWon ? 1 : 0; lb.losses += youWon ? 0 : 1; lb.rating += youWon ? 15 : -10; localStorage.setItem('zed_leaderboard', JSON.stringify(lb)); return }
         if (g.isDraw()) { setStatus('Draw!'); return }
-        if (mode === 'computer') { setStatus('Computer thinking...'); setTimeout(() => cpu(new Chess(g.fen())), 500) }
+       const cpu = (g) => { const ms = g.moves({ verbose: true }); if (!ms.length) return; const caps = ms.filter(m => m.captured || m.san.includes('+')); const pick = caps.length && Math.random() > 0.3 ? caps[Math.floor(Math.random()*caps.length)] : ms[Math.floor(Math.random()*ms.length)]; g.move(pick);
+ if (mode === 'computer') { setStatus('Computer thinking...'); setTimeout(() => cpu(new Chess(g.fen())), 500) }
         else setStatus(g.turn() === 'w' ? 'White to move' : 'Black to move')
         return
       }
