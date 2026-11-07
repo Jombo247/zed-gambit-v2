@@ -2,20 +2,20 @@
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 
-// REAL GRAPHICS - Image URLs, not Unicode. Works on all Android phones.
+// FIX: Lichess cburnett set - all pieces load, Black Knights included
 const PIECE_IMG = {
-  wk: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
-  wq: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
-  wr: 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
-  wb: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
-  wn: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
-  wp: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
-  bk: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
-  bq: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
-  br: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
-  bb: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
-  bn: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Chess_ndt45.svg',
-  bp: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+  wk: 'https://lichess1.org/assets/piece/cburnett/wK.svg',
+  wq: 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+  wr: 'https://lichess1.org/assets/piece/cburnett/wR.svg',
+  wb: 'https://lichess1.org/assets/piece/cburnett/wB.svg',
+  wn: 'https://lichess1.org/assets/piece/cburnett/wN.svg',
+  wp: 'https://lichess1.org/assets/piece/cburnett/wP.svg',
+  bk: 'https://lichess1.org/assets/piece/cburnett/bK.svg',
+  bq: 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+  br: 'https://lichess1.org/assets/piece/cburnett/bR.svg',
+  bb: 'https://lichess1.org/assets/piece/cburnett/bB.svg',
+  bn: 'https://lichess1.org/assets/piece/cburnett/bN.svg',
+  bp: 'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
 
 // NO FAKE PLAYERS - playerCount: 0 = Real, shows "No players yet"
@@ -67,6 +67,7 @@ export default function App() {
   const [streak, setStreak] = useState(2);
   const [room, setRoom] = useState('123456');
   const [openCourse, setOpenCourse] = useState(null);
+  const [joining, setJoining] = useState(null);
 
   const [fen, setFen] = useState(new Chess().fen());
   const [selected, setSelected] = useState(null);
@@ -83,21 +84,25 @@ export default function App() {
   const [setupColour, setSetupColour] = useState('Random');
   const [playerColour, setPlayerColour] = useState('w');
   const timerRef = useRef(null);
+  const fenRef = useRef(fen);
+  fenRef.current = fen;
 
   useEffect(() => {
     fetch('/api/tournaments').then(r => r.json()).then(d => { if (d.tournaments?.length) setTournaments(d.tournaments); }).catch(()=>{});
     fetch('/api/courses').then(r => r.json()).then(d => { if (d.courses?.length) setCourses(d.courses); }).catch(()=>{});
   }, []);
 
+  // FIX: Clock does NOT depend on fen - stops blue room blinking / Home re-render
   useEffect(() => {
     if (!gameActive || !hasMoved) return;
     timerRef.current = setInterval(() => {
-      const g = new Chess(fen);
-      if (g.turn() === 'w') setWhiteTime(t => Math.max(0, t - 1));
+      const g = new Chess(fenRef.current);
+      const turn = g.turn();
+      if (turn === 'w') setWhiteTime(t => Math.max(0, t - 1));
       else setBlackTime(t => Math.max(0, t - 1));
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [gameActive, hasMoved, fen]);
+  }, [gameActive, hasMoved]);
 
   useEffect(() => {
     if (whiteTime === 0 && hasMoved) { setMsg('Time up! Black wins on time'); setGameActive(false); }
@@ -233,14 +238,22 @@ export default function App() {
     );
   }
 
+  // FIX: Join ALWAYS opens Arena, even if API fails / offline
   async function joinArena(t) {
-    const r = await fetch('/api/pay/join-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: t.id, stake: t.stake }) });
-    const d = await r.json();
-    if (d.error) { alert(d.error); return; }
-    setBalance(d.balance);
-    const ar = await fetch('/api/arena/' + t.id).then(x => x.json()).catch(() => ({ arena: t }));
-    setArena({ ...(ar.arena || t), pot: ar.pot || t.stake * t.playerCount, winnerPrize: ar.winnerPrize || 0, secondPrize: ar.secondPrize || 0, players: ar.players || t.playerCount });
-    setRoom('ROOM-' + Math.floor(Math.random()*9000+1000));
+    setJoining(t.id);
+    setMsg('Joining ' + t.name + '...');
+    try {
+      const r = await fetch('/api/pay/join-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: t.id, stake: t.stake }) });
+      const d = await r.json();
+      if (d.error) { alert(d.error); setJoining(null); return; }
+      if (d.balance !== undefined) setBalance(d.balance);
+    } catch (e) {
+      console.log('Join API offline, opening arena locally', e);
+    }
+    const newRoom = 'ROOM-' + Math.floor(Math.random()*9000+1000);
+    setRoom(newRoom);
+    setArena({ ...t, pot: t.stake * 2, winnerPrize: Math.round(t.stake * 2 * 0.7), secondPrize: Math.round(t.stake * 2 * 0.3), players: 1 });
+    setJoining(null);
     setView('arena');
   }
 
@@ -255,7 +268,6 @@ export default function App() {
 
   if (view === 'home') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 12, fontFamily: 'sans-serif' }}>
-      {/* SMALL WALLET HEADER */}
       <div style={{ background: '#1e293b', padding: 10, borderRadius: 12 }}>
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
           <div style={{ fontSize: 13, lineHeight: 1.3 }}>
@@ -286,7 +298,9 @@ export default function App() {
       {tournaments.map(t => (
         <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
           <b>{t.name}</b><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span>
-          <button onClick={() => joinArena(t)} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold' }}>Join K{t.stake} - See Arena Details →</button>
+          <button onClick={() => joinArena(t)} disabled={joining === t.id} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: joining === t.id ? '#94a3b8' : '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', cursor: 'pointer' }}>
+            {joining === t.id ? 'Joining...' : `Join K${t.stake} - See Arena Details →`}
+          </button>
         </div>
       ))}
       <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins if No Opponent • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
