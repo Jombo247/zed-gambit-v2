@@ -12,7 +12,7 @@ export default function ChessBoard() {
   const click = (sq) => {
     if (mode === 'computer' && game.turn() === 'b') return
     if (sel) {
-      const mv = game.moves({ from: sel, verbose: true }).find(x => x.to === sq)
+      const mv = game.moves({ square: sel, verbose: true }).find(x => x.to === sq)
       if (mv) {
         const g = new Chess(game.fen()); g.move(mv); setSel(null); setGame(g)
         if (g.isCheckmate()) { setStatus('Checkmate!'); return }
