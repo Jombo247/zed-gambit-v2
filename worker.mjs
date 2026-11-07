@@ -7,6 +7,25 @@ export class Lobby {
   }
 }
 
+export class ChessRoom {
+  constructor(state) { this.state = state; this.sessions = new Set(); }
+  async fetch(request) {
+    const upgrade = request.headers.get('Upgrade');
+    if (upgrade === 'websocket') {
+      const pair = new WebSocketPair();
+      const [client, server] = Object.values(pair);
+      server.accept();
+      this.sessions.add(server);
+      server.addEventListener('message', (e) => {
+        for (const s of this.sessions) { try { if (s !== server) s.send(e.data); } catch {} }
+      });
+      server.addEventListener('close', () => { this.sessions.delete(server); });
+      return new Response(null, { status: 101, webSocket: client });
+    }
+    return new Response(JSON.stringify({ ok: true, msg: "ChessRoom DO alive" }), { headers: { "Content-Type": "application/json" } });
+  }
+}
+
 let users = {};
 let balances = {};
 let tournaments = [
@@ -36,7 +55,6 @@ function calcPayout(stake, players) {
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
-
     if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/ws')) {
       try {
         if (env.ASSETS) {
@@ -46,11 +64,9 @@ export default {
         }
       } catch {}
     }
-
     if (request.method === 'OPTIONS') {
       return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" } });
     }
-
     if (url.pathname === '/ws') {
       const upgrade = request.headers.get('Upgrade');
       if (upgrade !== 'websocket') return new Response('Expected websocket', { status: 426 });
@@ -82,11 +98,9 @@ export default {
       });
       return new Response(null, { status: 101, webSocket: client });
     }
-
     if (url.pathname === '/api/tournaments' && request.method === 'GET') {
       return json({ tournaments });
     }
-
     if (url.pathname === '/api/register' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (!b.username || !b.password) return json({ error: 'Username + password required' }, 400);
@@ -95,25 +109,21 @@ export default {
       if (balances[b.username] === undefined) balances[b.username] = 0;
       return json({ ok: true, user: { name: users[b.username].name, username: b.username }, balance: balances[b.username] });
     }
-
     if (url.pathname === '/api/login' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const u = users[b.username];
       if (!u || u.password !== b.password) return json({ error: 'Wrong username or password' }, 401);
       return json({ ok: true, user: { name: u.name, username: u.username }, balance: balances[b.username] || 0 });
     }
-
     if (url.pathname === '/api/verify' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (String(b.code) === '123456') return json({ ok: true, msg: 'Verified' });
       return json({ error: 'Wrong code. Demo code is 123456' }, 400);
     }
-
     if (url.pathname === '/api/balance' && request.method === 'GET') {
       const username = url.searchParams.get('username');
       return json({ balance: balances[username] || 0 });
     }
-
     if (url.pathname === '/api/pay/deposit' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const amt = Number(b.amount) || 0;
@@ -122,7 +132,6 @@ export default {
       balances[b.username] += amt;
       return json({ ok: true, balance: balances[b.username], msg: 'Deposited K' + amt });
     }
-
     if (url.pathname === '/api/pay/withdraw' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const amt = Number(b.amount) || 0;
@@ -130,7 +139,6 @@ export default {
       balances[b.username] -= amt;
       return json({ ok: true, balance: balances[b.username], msg: 'Withdraw K' + amt + ' sent' });
     }
-
     if (url.pathname === '/api/pay/join-arena' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const t = tournaments.find(x => x.id === b.tournamentId);
@@ -142,7 +150,6 @@ export default {
       const p = calcPayout(stake, Math.max(t.playerCount, 3));
       return json({ ok: true, balance: balances[b.username], pot: stake * t.playerCount, winner: p.winner, second: p.second, tournament: t });
     }
-
     if (url.pathname === '/api/pay/refund' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const stake = Number(b.stake) || 0;
@@ -152,7 +159,6 @@ export default {
       if (t && t.playerCount > 0) t.playerCount -= 1;
       return json({ ok: true, balance: balances[b.username], msg: 'Refunded K' + stake });
     }
-
     if (url.pathname === '/api/game-result' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       let pts = 0;
@@ -167,11 +173,9 @@ export default {
       leaderboard.sort((a, c) => c.points - a.points);
       return json({ ok: true, points: entry.points, leaderboard: leaderboard.slice(0, 20) });
     }
-
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       return json({ leaderboard: leaderboard.slice(0, 20) });
     }
-
     return json({ error: 'Not found: ' + url.pathname }, 404);
   }
 };
