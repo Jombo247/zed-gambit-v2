@@ -7,7 +7,6 @@ function calcElo(rA, rB, score, gamesPlayed) {
   return Math.round(rA + K * (score - expected))
 }
 function seedTournaments() {
-  const now = Date.now().toString().slice(-4)
   return new Map([
     ['ARENA1', { id: 'ARENA1', name: '🔥 Open Arena - Blitz Rated', format: 'arena', timeControl: 'blitz', stake: 0, rated: true, max: 32, status: 'waiting', players: [], round: 1 }],
     ['RAPID1', { id: 'RAPID1', name: '⚡ Open Arena - Rapid Rated', format: 'arena', timeControl: 'rapid', stake: 0, rated: true, max: 32, status: 'waiting', players: [], round: 1 }],
@@ -47,7 +46,6 @@ export class Lobby extends DurableObject {
   constructor(ctx, env) { super(ctx, env); this.ctx = ctx; this.env = env; this.users = new Map(); this.tournaments = seedTournaments(); }
   async fetch(request) {
     const url = new URL(request.url);
-    // HTTP API - for frontend to fetch open games without WebSocket
     if (url.pathname === '/api/tournaments') {
       const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 }));
       return new Response(JSON.stringify({ tournaments }), { headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
@@ -61,7 +59,6 @@ export class Lobby extends DurableObject {
       const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 }));
       for (const u of this.users.values()) { try { u.ws.send(JSON.stringify({ type: 'lobby', users, tournaments })) } catch {} }
     };
-    // Send current open games immediately on connect
     setTimeout(() => {
       const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 }));
       try { server.send(JSON.stringify({ type: 'lobby', users: [...this.users.values()].map(u => ({ id: u.id, name: u.name, rating: u.rating })), tournaments })) } catch {}
@@ -97,12 +94,24 @@ export class Lobby extends DurableObject {
         const t = this.tournaments.get(m.tournamentId); const me = this.users.get(myId);
         if (t && me && !t.players.find(p => p.id === myId)) {
           t.players.push({ id: myId, name: me.name, rating: me.rating });
-          if (t.players.length >= 4 && t.status === 'waiting') {
-            t.status = 'started';
-            const room = Math.random().toString(36).slice(2, 8).toUpperCase();
-            for (const p of t.players) {
-              const u = this.users.get(p.id);
-              if (u) u.ws.send(JSON.stringify({ type: 'tournament-started', tournamentId: t.id, room, format: t.format }));
+          // ARENA = start with 2, SWISS = start with 4
+          const needed = t.format === 'arena' ? 2 : 4;
+          if (t.players.length >= needed && t.status === 'waiting') {
+            if (t.format === 'arena') {
+              // Arena stays OPEN so more players can still join
+              const room = Math.random().toString(36).slice(2, 8).toUpperCase();
+              for (const p of t.players) {
+                const u = this.users.get(p.id);
+                if (u) u.ws.send(JSON.stringify({ type: 'tournament-started', tournamentId: t.id, room, format: t.format }));
+              }
+              // Keep status waiting for Arena
+            } else {
+              t.status = 'started';
+              const room = Math.random().toString(36).slice(2, 8).toUpperCase();
+              for (const p of t.players) {
+                const u = this.users.get(p.id);
+                if (u) u.ws.send(JSON.stringify({ type: 'tournament-started', tournamentId: t.id, room, format: t.format }));
+              }
             }
           }
           broadcastLobby();
