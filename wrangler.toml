@@ -1,21 +1,5 @@
 
-name = "zed-gambit"
-main =  "worker.js"
-compatibility_date = "2024-12-01"
-compatibility_flags = ["nodejs_compat"]
-
-[assets]
-directory = "./dist"
-binding = "ASSETS"
-
-[[durable_objects.bindings]]
-name = "CHESS_ROOM"
-class_name = "ChessRoom"
-
-[[durable_objects.bindings]]
-name = "LOBBY"
-class_name = "Lobby"
-
-[[migrations]]
-new_sqlite_classes = ["ChessRoom", "Lobby"]
-tag = "v3"
+// Zed Gambit - Worker P3...
+import { DurableObject }...
+...
+}
