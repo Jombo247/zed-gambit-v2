@@ -23,7 +23,7 @@ export default function ChessBoard() {
       const mv = game.moves({ square: sel, verbose: true }).find(x => x.to === sq)
       if (mv) {
         const g = new Chess(game.fen()); g.move(mv); setSel(null); setGame(g)
-        if (g.isCheckmate()) { setStatus('Checkmate!'); return }
+        if (g.isCheckmate()) { setStatus('Checkmate!'); const lb = JSON.parse(localStorage.getItem('zed_leaderboard') || '{"wins":0,"losses":0,"draws":0,"rating":1200}'); const youWon = g.turn() === 'b'; lb.wins += youWon ? 1 : 0; lb.losses += youWon ? 0 : 1; lb.rating += youWon ? 15 : -10; localStorage.setItem('zed_leaderboard', JSON.stringify(lb)); return }
         if (g.isDraw()) { setStatus('Draw!'); return }
         if (mode === 'computer') { setStatus('Computer thinking...'); setTimeout(() => cpu(new Chess(g.fen())), 500) }
         else setStatus(g.turn() === 'w' ? 'White to move' : 'Black to move')
