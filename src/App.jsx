@@ -2,11 +2,28 @@
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 
+// REAL GRAPHICS - Image URLs, not Unicode. Works on all Android phones.
+const PIECE_IMG = {
+  wk: 'https://upload.wikimedia.org/wikipedia/commons/4/42/Chess_klt45.svg',
+  wq: 'https://upload.wikimedia.org/wikipedia/commons/1/15/Chess_qlt45.svg',
+  wr: 'https://upload.wikimedia.org/wikipedia/commons/7/72/Chess_rlt45.svg',
+  wb: 'https://upload.wikimedia.org/wikipedia/commons/b/b1/Chess_blt45.svg',
+  wn: 'https://upload.wikimedia.org/wikipedia/commons/7/70/Chess_nlt45.svg',
+  wp: 'https://upload.wikimedia.org/wikipedia/commons/4/45/Chess_plt45.svg',
+  bk: 'https://upload.wikimedia.org/wikipedia/commons/f/f0/Chess_kdt45.svg',
+  bq: 'https://upload.wikimedia.org/wikipedia/commons/4/47/Chess_qdt45.svg',
+  br: 'https://upload.wikimedia.org/wikipedia/commons/f/ff/Chess_rdt45.svg',
+  bb: 'https://upload.wikimedia.org/wikipedia/commons/9/98/Chess_bdt45.svg',
+  bn: 'https://upload.wikimedia.org/wikipedia/commons/e/e7/Chess_ndt45.svg',
+  bp: 'https://upload.wikimedia.org/wikipedia/commons/c/c7/Chess_pdt45.svg',
+};
+
+// NO FAKE PLAYERS - playerCount: 0 = Real, shows "No players yet"
 const FALLBACK_ARENAS = [
-  { id: "MEGA1", name: "🌍 Mega K5 Arena", stake: 5, playerCount: 12, max: 200, prize: "K70", status: "LIVE", details: "Winner K70. 10% fee + 16% tax on fee. 70% / 30% split.", rules: "10 min rapid, 2 pts win, 1 draw, 4 for 3-win streak." },
-  { id: "PRO10", name: "🔥 Pro K10 Arena", stake: 10, playerCount: 8, max: 100, prize: "K140", status: "LIVE", details: "Winner K140.", rules: "10 min rapid." },
-  { id: "VIP50", name: "👑 VIP K50 Arena", stake: 50, playerCount: 3, max: 50, prize: "K700", status: "LIVE", details: "Winner K700.", rules: "15 min rapid." },
-  { id: "FREE1", name: "🎁 Free Practice", stake: 0, playerCount: 25, max: 200, prize: "K0", status: "LIVE", details: "Free practice.", rules: "No prize, just points." },
+  { id: "MEGA1", name: "🌍 Mega K5 Arena", stake: 5, playerCount: 0, max: 200, prize: "K70", status: "WAITING", details: "Winner K70. 10% fee + 16% tax on fee. 70% / 30% split.", rules: "10 min rapid, 2 pts win, 1 draw, 4 for 3-win streak." },
+  { id: "PRO10", name: "🔥 Pro K10 Arena", stake: 10, playerCount: 0, max: 100, prize: "K140", status: "WAITING", details: "Winner K140.", rules: "10 min rapid." },
+  { id: "VIP50", name: "👑 VIP K50 Arena", stake: 50, playerCount: 0, max: 50, prize: "K700", status: "WAITING", details: "Winner K700.", rules: "15 min rapid." },
+  { id: "FREE1", name: "🎁 Free Practice", stake: 0, playerCount: 0, max: 200, prize: "K0", status: "WAITING", details: "Free practice.", rules: "No prize, just points." },
 ];
 
 const FALLBACK_COURSES = [
@@ -38,11 +55,6 @@ function formatTime(sec) {
   return `${m}:${s < 10 ? '0' + s : s}`;
 }
 
-// GRAPHICS FIX: Same filled shape for both colours, colour decides look
-// White = WHITE filled shape + thick BLACK outline
-// Black = BLACK filled shape + thin WHITE outline
-const PIECE_GLYPH = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
-
 export default function App() {
   const user = { name: 'Themba Ndhlovu', username: 'Pazed200' };
   const [balance, setBalance] = useState(900);
@@ -68,9 +80,8 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(true);
   const [setupLevel, setSetupLevel] = useState('Medium');
   const [setupTime, setSetupTime] = useState(600);
-  // NEW: Colour selection
   const [setupColour, setSetupColour] = useState('Random');
-  const [playerColour, setPlayerColour] = useState('w'); // 'w' or 'b'
+  const [playerColour, setPlayerColour] = useState('w');
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -114,12 +125,10 @@ export default function App() {
   }
 
   function startNewGame() {
-    // RANDOM COLOUR SELECTION
     let colour = 'w';
     if (setupColour === 'White') colour = 'w';
     else if (setupColour === 'Black') colour = 'b';
-    else colour = Math.random() < 0.5 ? 'w' : 'b'; // Random
-
+    else colour = Math.random() < 0.5 ? 'w' : 'b';
     const g = new Chess();
     setFen(g.fen());
     setLastMove(null);
@@ -131,12 +140,10 @@ export default function App() {
     setHasMoved(false);
     setGameActive(false);
     setShowSetup(false);
-
     if (colour === 'w') {
-      setMsg(`You are WHITE ♔ - ${setupLevel} - ${setupTime / 60} min - Your move first, clock starts after your move`);
+      setMsg(`You are WHITE - ${setupLevel} - ${setupTime / 60} min - Your move first, clock starts after your move`);
     } else {
-      setMsg(`You are BLACK ♚ - Computer is White, computer moves first...`);
-      // If you are Black, computer (White) moves first, then clock starts
+      setMsg(`You are BLACK - Computer is White, computer moves first...`);
       setTimeout(() => {
         setHasMoved(true);
         setGameActive(true);
@@ -147,7 +154,6 @@ export default function App() {
 
   function onSquareClick(sq) {
     const game = new Chess(fen);
-    // Only allow moving your own colour
     if (game.turn() !== playerColour) { setMsg('Wait - Computer thinking...'); return; }
     if (selected === sq) { setSelected(null); return; }
     if (selected) {
@@ -171,7 +177,6 @@ export default function App() {
   function renderBoard() {
     const game = new Chess(fen);
     const files = ['a','b','c','d','e','f','g','h'];
-    // Flip board if you are Black - your pieces at bottom
     const displayFiles = playerColour === 'w' ? files : [...files].reverse();
     const displayRanks = playerColour === 'w' ? [8,7,6,5,4,3,2,1] : [1,2,3,4,5,6,7,8];
     const rows = [];
@@ -182,7 +187,6 @@ export default function App() {
         const file = displayFiles[ci];
         const sq = file + r;
         const piece = game.get(sq);
-        // Real board colour: (file index + rank) determines light/dark
         const fileIdx = files.indexOf(file);
         const isDark = (fileIdx + r) % 2 === 0;
         const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
@@ -190,19 +194,11 @@ export default function App() {
         let bg = isDark ? '#769656' : '#eeeed2';
         if (isLast) bg = '#facc15';
         if (isSel) bg = '#22c55e';
-        let sym = '';
-        if (piece) sym = PIECE_GLYPH[piece.type];
-        const isWhitePiece = piece?.color === 'w';
         cols.push(
-          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, cursor: 'pointer', position: 'relative', fontWeight: 'bold',
-            // GRAPHICS: White = pure white fill, Black = pure black fill
-            color: !piece ? '#000' : isWhitePiece ? '#FFFFFF' : '#000000',
-            WebkitTextStroke: !piece ? '0px' : isWhitePiece ? '2px #000000' : '1px #FFFFFF',
-            textShadow: !piece ? 'none' : isWhitePiece ? '0 2px 3px #000, 0 0 2px #000' : '0 1px 2px #fff',
-          }}>
-            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{r}</span>}
-            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{file}</span>}
-            {sym}
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{r}</span>}
+            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{file}</span>}
+            {piece && <img src={PIECE_IMG[piece.color + piece.type]} alt={sq} style={{ width: 34, height: 34, pointerEvents: 'none', filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.5))' }} draggable={false} />}
           </div>
         );
       }
@@ -213,7 +209,6 @@ export default function App() {
 
   function BoardWithClocks() {
     const turn = new Chess(fen).turn();
-    // If you are White, you are at bottom. If Black, you are at bottom too (board flips)
     const youAreWhite = playerColour === 'w';
     const topLabel = youAreWhite ? '⬛ Black • Computer' : '⬜ White • Computer';
     const topTime = youAreWhite ? blackTime : whiteTime;
@@ -233,7 +228,7 @@ export default function App() {
           <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(bottomTime)}</span>
         </div>
         <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused'}</p>
-        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE ♔ - White pieces at bottom' : 'BLACK ♚ - Black pieces at bottom'}</p>
+        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE - White pieces at bottom' : 'BLACK - Black pieces at bottom'}</p>
       </div>
     );
   }
@@ -259,36 +254,42 @@ export default function App() {
   }
 
   if (view === 'home') return (
-    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, fontFamily: 'sans-serif' }}>
-      <div style={{ background: '#1e293b', padding: 16, borderRadius: 16 }}>
-        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
-          <div>👤 {user.name}<br/>1200 • Online<br/>🔥 Endless: {points} pts • {games} games • Streak: {streak}<br/>Min Bet K5 • AUTO STAKES + AUTO REFUND 5 MINS</div>
-          <div style={{ background: '#000', padding: '8px 12px', borderRadius: 20, border: '2px solid #facc15' }}>💰 K{balance}.00 <button onClick={() => setView('wallet')} style={{ background: '#22c55e', border: 0, padding: '6px 12px', borderRadius: 8, color: '#fff' }}>Wallet</button></div>
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 12, fontFamily: 'sans-serif' }}>
+      {/* SMALL WALLET HEADER */}
+      <div style={{ background: '#1e293b', padding: 10, borderRadius: 12 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <div style={{ fontSize: 13, lineHeight: 1.3 }}>
+            👤 <b>{user.name}</b> • 1200 • Online<br/>
+            🔥 {points} pts • {games} games • Streak: {streak}
+          </div>
+          <button onClick={() => setView('wallet')} style={{ background: '#000', padding: '6px 10px', borderRadius: 20, border: '1px solid #facc15', color: '#fff', fontSize: 12, display: 'flex', alignItems: 'center', gap: 4 }}>
+            💰 K{balance} <span style={{ background: '#22c55e', padding: '2px 8px', borderRadius: 10, fontSize: 11 }}>Wallet</span>
+          </button>
         </div>
-        <div>📣 🏆 You won! +4 pts<br/>🎲 Room: {room}</div>
+        <div style={{ fontSize: 11, opacity: 0.7, marginTop: 4 }}>Min Bet K5 • AUTO STAKES + AUTO REFUND 5 MINS • 🎲 Room: {room} • 🏆 You won! +4 pts</div>
       </div>
-      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ flex: 1, padding: 14, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>🤖 Play vs Computer</button>
-        <button onClick={() => setView('courses')} style={{ flex: 1, padding: 14, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>📚 Chess Courses</button>
+      <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ flex: 1, padding: 12, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold', fontSize: 14 }}>🤖 Play vs Computer</button>
+        <button onClick={() => setView('courses')} style={{ flex: 1, padding: 12, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold', fontSize: 14 }}>📚 Chess Courses</button>
       </div>
-      <div style={{ background: '#1e293b', padding: 20, borderRadius: 16, marginTop: 16 }}>
-        <h2>♟️ Play Now — Auto Stake K5</h2>
-        <p>Room {room} vs</p><p>Score: {points} pts • Streak: {streak}</p>
+      <div style={{ background: '#1e293b', padding: 16, borderRadius: 16, marginTop: 12 }}>
+        <h2 style={{ fontSize: 20, margin: '0 0 8px 0' }}>♟️ Play Now — Auto Stake K5</h2>
+        <p style={{ margin: '4px 0' }}>Room {room} vs</p><p style={{ margin: '4px 0' }}>Score: {points} pts • Streak: {streak}</p>
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={() => reportResult('win')} style={{ flex: 1, padding: 12, background: '#22c55e', border: 0, borderRadius: 10 }}>🏆 I Won</button>
-          <button onClick={() => reportResult('draw')} style={{ flex: 1, padding: 12, background: '#334155', color: '#fff', border: 0, borderRadius: 10 }}>💛 Draw</button>
-          <button onClick={() => reportResult('loss')} style={{ flex: 1, padding: 12, background: '#ef4444', border: 0, borderRadius: 10 }}>😞 I Lost</button>
+          <button onClick={() => reportResult('win')} style={{ flex: 1, padding: 10, background: '#22c55e', border: 0, borderRadius: 10 }}>🏆 I Won</button>
+          <button onClick={() => reportResult('draw')} style={{ flex: 1, padding: 10, background: '#334155', color: '#fff', border: 0, borderRadius: 10 }}>💛 Draw</button>
+          <button onClick={() => reportResult('loss')} style={{ flex: 1, padding: 10, background: '#ef4444', border: 0, borderRadius: 10 }}>😞 I Lost</button>
         </div>
-        <p style={{ textAlign: 'center', marginTop: 12 }}>🔑 Join by Room Code</p>
+        <p style={{ textAlign: 'center', marginTop: 10, fontSize: 13 }}>🔑 Join by Room Code</p>
       </div>
-      <h3 style={{ marginTop: 20 }}>🏆 ARENAS — Tap to Join & See Details ({tournaments.length} Arenas)</h3>
+      <h3 style={{ marginTop: 16, fontSize: 16 }}>🏆 ARENAS — Tap to Join & See Details</h3>
       {tournaments.map(t => (
-        <div key={t.id} style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
-          <b>{t.name}</b><br/>Stake: K{t.stake} • Players: {t.playerCount}/{t.max} • Prize: {t.prize} • {t.status}
-          <button onClick={() => joinArena(t)} style={{ display: 'block', width: '100%', marginTop: 10, padding: 12, background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold' }}>Join K{t.stake} - See Arena Details →</button>
+        <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
+          <b>{t.name}</b><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span>
+          <button onClick={() => joinArena(t)} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold' }}>Join K{t.stake} - See Arena Details →</button>
         </div>
       ))}
-      <p style={{ textAlign: 'center', opacity: 0.7 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins if No Opponent • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
+      <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins if No Opponent • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
     </div>
   );
 
@@ -335,7 +336,7 @@ export default function App() {
         <button onClick={() => { setView('home'); setShowSetup(true); }} style={{ float: 'left' }}>← Back</button>
         <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Setup</button>
         <h2>🤖 Play vs Computer</h2>
-        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • You are <b>{playerColour === 'w' ? 'WHITE ♔' : 'BLACK ♚'}</b><br/>{hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
+        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • You are <b>{playerColour === 'w' ? 'WHITE' : 'BLACK'}</b><br/>{hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
         <BoardWithClocks />
         <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
         <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
