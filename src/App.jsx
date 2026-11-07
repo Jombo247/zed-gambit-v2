@@ -3,9 +3,12 @@ import './styles.css'
 import ChessBoard from './ChessBoard.jsx'
 import Leaderboard from './Leaderboard.jsx'
 import OnlineChess from './OnlineChess.jsx'
+import LiveLobby from './LiveLobby.jsx'
 
 function App() {
   const [screen, setScreen] = useState('home')
+  const [pendingRoom, setPendingRoom] = useState('')
+  const [pendingStake, setPendingStake] = useState(20)
 
   if (screen === 'leaderboard') {
     return (
@@ -29,7 +32,24 @@ function App() {
           <span className="status">MVP DEVELOPMENT</span>
         </header>
         <main className="main-content">
-          <OnlineChess onBack={() => setScreen('home')} />
+          <OnlineChess onBack={() => setScreen('home')} initialRoom={pendingRoom} initialStake={pendingStake} />
+        </main>
+      </div>
+    )
+  }
+
+  if (screen === 'lobby') {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <a className="brand" href="#"><span>ZED <strong>GAMBIT</strong></span></a>
+          <span className="status">MVP DEVELOPMENT</span>
+        </header>
+        <main className="main-content">
+          <LiveLobby
+            onBack={() => setScreen('home')}
+            onPlayRoom={(room, stake) => { setPendingRoom(room); setPendingStake(stake || 20); setScreen('online') }}
+          />
         </main>
       </div>
     )
@@ -41,19 +61,16 @@ function App() {
         <a className="brand" href="#"><span>ZED <strong>GAMBIT</strong></span></a>
         <span className="status">MVP DEVELOPMENT</span>
       </header>
-
       <main className="main-content">
         <section className="hero">
           <p className="eyebrow">WELCOME TO ZED GAMBIT</p>
           <h1>Think Smart.<br />Play Bold.</h1>
           <p>Your next chess challenge starts here. Sharpen your strategy and challenge your limits.</p>
         </section>
-
         <section className="game-section">
           <h2>Your Chessboard</h2>
           <ChessBoard />
         </section>
-
         <section className="game-options">
           <h2>Choose Your Challenge</h2>
           <div className="options-grid">
@@ -63,14 +80,18 @@ function App() {
               <p>Challenge the Stockfish chess engine.</p>
               <p><span style={{ background: '#22c55e', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ Play Now - Tap Board Above</span></p>
             </article>
-
             <article className="option-card" onClick={() => setScreen('online')} style={{ cursor: 'pointer' }}>
               <span className="option-icon">👥</span>
               <h3>Play Online</h3>
               <p>Challenge another player in real time.</p>
               <p><span style={{ background: '#3b82f6', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ Play Now</span></p>
             </article>
-
+            <article className="option-card" onClick={() => setScreen('lobby')} style={{ cursor: 'pointer', border: '2px solid #EF7D00' }}>
+              <span className="option-icon">🔴</span>
+              <h3>Live Lobby</h3>
+              <p>See who's online, challenge them, join tournaments.</p>
+              <p><span style={{ background: '#EF7D00', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ LIVE - See Players</span></p>
+            </article>
             <article className="option-card" onClick={() => setScreen('leaderboard')} style={{ cursor: 'pointer' }}>
               <span className="option-icon">🏆</span>
               <h3>Leaderboard</h3>
@@ -80,10 +101,8 @@ function App() {
           </div>
         </section>
       </main>
-
       <footer>ZED GAMBIT © 2026 - THINK SMART. PLAY BOLD. WIN BIG.</footer>
     </div>
   )
 }
-
 export default App
