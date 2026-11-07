@@ -1,149 +1,214 @@
 
-import { useState, useEffect, useRef } from 'react'
-import Auth from './Auth.jsx'
-function AdminDashboard({ user, onLogout }) {
-  const [stats, setStats] = useState(null); const [fin, setFin] = useState(null); const [tab, setTab] = useState('finance')
-  const load = async () => { const s = await (await fetch('/api/admin/stats')).json(); setStats(s); const f = await (await fetch('/api/admin/finance')).json(); setFin(f) }
-  useEffect(()=>{ load(); const i=setInterval(load, 5000); return ()=>clearInterval(i) },[])
-  const ban = async (username) => { await fetch('/api/admin/ban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); load() }
-  const del = async (username) => { if(!confirm('Delete '+username+'?')) return; await fetch('/api/admin/delete-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); load() }
-  if (!stats || !fin) return <div style={{padding:20, color:'#fff'}}>Loading admin...</div>
-  return (
-    <div style={{padding:16, maxWidth:1000, margin:'0 auto', color:'#fff', background:'#0f172a', minHeight:'100vh'}}>
-      <h1>🛡️ Admin Dashboard</h1>
-      <p>Logged in as <b>{user.name} (@{user.username})</b> <button onClick={onLogout}>Logout</button> <button onClick={()=>window.location.reload()}>⬅️ Back</button></p>
-      <div style={{display:'flex', gap:12, margin:'16px 0', flexWrap:'wrap'}}><button onClick={()=>setTab('finance')}>💰 Cash Flow</button><button onClick={()=>setTab('overview')}>Overview</button><button onClick={()=>setTab('users')}>Users ({stats.totalUsers})</button><button onClick={()=>setTab('tournaments')}>Tournaments ({stats.totalTournaments})</button></div>
-      {tab==='finance' && (<div><h2>💰 Cash Flow — Auto Stakes + Auto Refund 5 Mins</h2><p style={{fontSize:13, opacity:0.7}}>Winner 70% • 2nd 30% • Admin 10% • Tax 16% on fee • Refund if no opponent in 5 mins</p><div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:12}}><div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>GROSS POTS</small><h2>K{fin.gross.toFixed(2)}</h2></div><div style={{background:'#581c87', padding:14, borderRadius:12}}><small>👑 ADMIN FEES</small><h2>K{fin.adminFees.toFixed(2)}</h2></div><div style={{background:'#7f1d1d', padding:14, borderRadius:12}}><small>🧾 TAX</small><h2>K{fin.taxReserve.toFixed(2)}</h2></div><div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>WINNERS PAID</small><h2>K{fin.payouts.toFixed(2)}</h2></div><div style={{background:'#14532d', padding:14, borderRadius:12}}><small>📈 NET PROFIT</small><h2>K{fin.profit.toFixed(2)}</h2></div></div><h3 style={{marginTop:20}}>📋 Ledger</h3><table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8, fontSize:13}}><thead><tr><th align="left">Date</th><th align="left">Type</th><th align="left">Note</th><th>Pot</th><th>Admin</th><th>Tax</th><th>Winner Gets</th><th>Profit</th></tr></thead><tbody>{fin.transactions.map(t=>(<tr key={t.id}><td>{new Date(t.date).toLocaleString()}</td><td>{t.type}</td><td>{t.note}</td><td>K{t.amount.toFixed(2)}</td><td>K{(t.adminFee||0).toFixed(2)}</td><td>K{(t.tax||0).toFixed(2)}</td><td>K{(t.payout||0).toFixed(2)}</td><td>+K{(t.net||0).toFixed(2)}</td></tr>))}</tbody></table></div>)}
-      {tab==='overview' && (<div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12}}><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalUsers}</h2><p>Total Users</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.onlineUsers}</h2><p>Online</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalTournaments}</h2><p>Tournaments</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalGames}</h2><p>Games</p></div></div>)}
-      {tab==='users' && (<table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8}}><thead><tr><th align="left">User</th><th>Role</th><th>Rating</th><th>Games</th><th>Action</th></tr></thead><tbody>{stats.users.map(u=>(<tr key={u.username}><td>{u.name}<br/><small>@{u.username} {u.banned?'🚫 BANNED':''}</small></td><td>{u.role}</td><td>{u.rating}</td><td>{u.games}</td><td><button onClick={()=>ban(u.username)}>{u.banned?'Unban':'Ban'}</button> <button onClick={()=>del(u.username)}>Delete</button></td></tr>))}</tbody></table>)}
-      {tab==='tournaments' && stats.tournaments.map(t=>(<div key={t.id} style={{background:'#1e293b', padding:12, borderRadius:12, marginBottom:8}}><b>{t.name}</b> — {t.playerCount}/{t.max} • Stake K{t.stake||0} • Pot K{(t.stake||0)*(t.playerCount||0)}</div>))}
-    </div>
-  )
-}
+import { useState, useEffect } from 'react';
+import { Chess } from 'chess.js';
+
 export default function App() {
-  const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('zed_user')) } catch { return null } })
-  const [showAdmin, setShowAdmin] = useState(false); const [page, setPage] = useState('home'); const [tournaments, setTournaments] = useState([]); const [status, setStatus] = useState(''); const [room, setRoom] = useState(''); const [opponent, setOpponent] = useState(''); const [stats, setStats] = useState(null)
-  const [balance, setBalance] = useState(() => Number(localStorage.getItem('zed_balance') || 0)); const [showBalance, setShowBalance] = useState(() => localStorage.getItem('zed_show_balance') !== 'hide')
-  const [arenaScore, setArenaScore] = useState(0); const [streak, setStreak] = useState(0); const [gamesPlayed, setGamesPlayed] = useState(0); const [countdown, setCountdown] = useState(0); const [autoPlay, setAutoPlay] = useState(true); const [currentArena, setCurrentArena] = useState('MEGA1'); const [joinedArena, setJoinedArena] = useState(null); const [joinedStake, setJoinedStake] = useState(0); const [joinedAt, setJoinedAt] = useState(null); const [refundTimer, setRefundTimer] = useState(0); const [refundStatus, setRefundStatus] = useState('')
-  const [mobile, setMobile] = useState(() => localStorage.getItem('zed_mobile') || ''); const [mobileVerified, setMobileVerified] = useState(() => localStorage.getItem('zed_mobile_verified') === 'yes'); const [mobileCode, setMobileCode] = useState(''); const [mobileStep, setMobileStep] = useState('input'); const [payAmount, setPayAmount] = useState('5'); const [payProvider, setPayProvider] = useState('MTN'); const [payHistory, setPayHistory] = useState(() => { try { return JSON.parse(localStorage.getItem('zed_pay_history') || '[]') } catch { return [] } })
-  const [timeline, setTimeline] = useState(() => { try { return JSON.parse(localStorage.getItem('zed_timeline') || '[]') } catch { return [] } })
-  const [timelineFilter, setTimelineFilter] = useState('all'); const [now, setNow] = useState(new Date()); const [lastPayout, setLastPayout] = useState(null)
-  const calcPayout = (stake, players) => { const pot = stake * players; const adminFee = pot * 0.10; const tax = adminFee * 0.16; const left = pot - adminFee; const winner = players >= 3 ? left * 0.70 : left; const second = players >= 3 ? left * 0.30 : 0; return { pot, adminFee, tax, adminNet: adminFee - tax, left, winner, second } }
-  const addTimeline = (text, type) => { const entry = { id: Date.now(), time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }), date: new Date().toLocaleDateString(), text, type: type || 'info' }; const next = [entry, ...timeline].slice(0, 50); setTimeline(next); localStorage.setItem('zed_timeline', JSON.stringify(next)) }
-  const toggleBalance = () => { const next = !showBalance; setShowBalance(next); localStorage.setItem('zed_show_balance', next ? 'show' : 'hide') }
-  const addPayHistory = (entry) => { const next = [entry, ...payHistory].slice(0, 20); setPayHistory(next); localStorage.setItem('zed_pay_history', JSON.stringify(next)) }
-  const wsRef = useRef(null)
-  const loadTournaments = async () => { try { const r = await fetch('/api/tournaments'); const d = await r.json(); setTournaments(d.tournaments || []) } catch {} }
-  const loadStats = async () => { try { const r = await fetch('/api/admin/stats'); const d = await r.json(); setStats(d) } catch {} }
-  const loadWallet = async () => { if (!user) return; try { const r = await fetch('/api/pay/wallet?username=' + user.username); const d = await r.json(); if (d.balance !== undefined) { setBalance(d.balance); localStorage.setItem('zed_balance', String(d.balance)) } if (d.mobile) { setMobile(d.mobile); localStorage.setItem('zed_mobile', d.mobile) } if (d.mobileVerified) { setMobileVerified(true); localStorage.setItem('zed_mobile_verified', 'yes') } if (d.history) setPayHistory(d.history) } catch {} }
-  // AUTO REFUND TIMER - 5 MINS
-  const checkRefund = async () => {
-    if (!joinedArena || !joinedAt) return;
-    const waited = Date.now() - joinedAt;
-    const remaining = 300000 - waited;
-    if (remaining <= 0) {
-      // 5 mins passed, check if opponent found
-      if (!room) {
-        // No game started - AUTO REFUND
-        setRefundStatus('⏳ 5 mins passed — Refunding K' + joinedStake + '...');
-        const r = await fetch('/api/pay/refund-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: joinedArena, stake: joinedStake }) });
-        const d = await r.json();
-        if (d.ok) {
-          setBalance(d.balance); localStorage.setItem('zed_balance', String(d.balance));
-          setRefundStatus('✅ Auto-Refunded K' + joinedStake + ' — No opponent in 5 mins. Try again or try another arena.');
-          addTimeline(`↩️ Auto-Refunded K${joinedStake} — No opponent in 5 mins in ${joinedArena}`, 'money');
-          addPayHistory({ id: Date.now(), type: 'refund', amount: joinedStake, provider: 'Arena Refund', status: 'refunded', date: new Date().toLocaleString() });
-          setJoinedArena(null); setJoinedStake(0); setJoinedAt(null); setRefundTimer(0);
-        } else { setRefundStatus('⚠️ Refund failed: ' + d.error); }
-      } else { setJoinedAt(null); setRefundTimer(0); }
-      return;
-    }
-    setRefundTimer(Math.ceil(remaining / 1000));
-  }
-  useEffect(() => { const t = setInterval(()=>setNow(new Date()), 1000); return ()=>clearInterval(t) }, [])
-  useEffect(() => { if (!joinedArena) return; const i = setInterval(checkRefund, 1000); return ()=>clearInterval(i) }, [joinedArena, joinedAt, room])
-  const finishGame = (result) => {
-    setGamesPlayed(g=>g+1)
-    if (result==='win') { setArenaScore(s=>s + (streak>=1 ? 4 : 2)); setStreak(s=>s+1); setStatus(`🏆 You won! +${streak>=1 ? 4 : 2} pts`); addTimeline(`🏆 Won vs ${opponent || 'Opponent'} +${streak>=1 ? 4 : 2} pts`, 'win') }
-    else if (result==='draw') { setArenaScore(s=>s+1); setStreak(0); setStatus('🤝 Draw! +1 pt'); addTimeline(`🤝 Draw vs ${opponent || 'Opponent'} +1 pt`, 'draw') }
-    else { setStreak(0); setStatus('😔 Lost. +0 pts'); addTimeline(`😔 Lost vs ${opponent || 'Opponent'}`, 'loss') }
-    wsRef.current?.send(JSON.stringify({ type: 'game-finished', tournamentId: currentArena }))
-    if (autoPlay) { setCountdown(3); let c = 3; const iv = setInterval(()=>{ c--; setCountdown(c); if(c<=0){ clearInterval(iv); setStatus('🔍 Finding next opponent...'); wsRef.current?.send(JSON.stringify({ type: 'game-finished', tournamentId: currentArena })); } }, 1000) }
-  }
+  const [user, setUser] = useState(null);
+  const [balance, setBalance] = useState(900);
+  const [view, setView] = useState('home'); // home | computer | arena | courses | wallet
+  const [tournaments, setTournaments] = useState([]);
+  const [courses, setCourses] = useState([]);
+  const [arena, setArena] = useState(null);
+  const [points, setPoints] = useState(43);
+  const [games, setGames] = useState(18);
+  const [streak, setStreak] = useState(2);
+  const [room, setRoom] = useState('123456');
+
+  // Chess vs Computer
+  const [chess, setChess] = useState(new Chess());
+  const [fen, setFen] = useState(new Chess().fen());
+  const [selected, setSelected] = useState(null);
+  const [msg, setMsg] = useState('Your move - You are White');
+
+  // Auth
+  const [name, setName] = useState('Themba Ndhlovu');
+  const [username, setUsername] = useState('Pazed200');
+  const [email, setEmail] = useState('Thembandhlovu24@gmail.com');
+  const [password, setPassword] = useState('');
+  const [code, setCode] = useState('');
+  const [authMsg, setAuthMsg] = useState('');
+
   useEffect(() => {
-    if (!user) return
-    loadTournaments(); loadStats(); loadWallet()
-    const interval = setInterval(() => { loadTournaments(); loadStats(); loadWallet() }, 5000)
-    const proto = location.protocol === 'https:' ? 'wss:' : 'ws:'
-    const ws = new WebSocket(`${proto}//${location.host}/ws/lobby`)
-    wsRef.current = ws
-    ws.onopen = () => { ws.send(JSON.stringify({ type: 'join-lobby', name: user.name, rating: user.rating })) }
-    const heartbeat = setInterval(() => { if (ws.readyState === 1) ws.send(JSON.stringify({ type: 'ping' })) }, 20000)
-    ws.onmessage = (e) => {
-      const m = JSON.parse(e.data)
-      if (m.type === 'lobby') { setTournaments(m.tournaments || []) }
-      if (m.type === 'waiting-for-opponent') setStatus('🔍 ' + m.message)
-      if (m.type === 'stake-deducted') { setBalance(m.balance); localStorage.setItem('zed_balance', String(m.balance)); setStatus(`💰 K${m.stake} deducted — Pot K${m.pot}`); loadWallet() }
-      if (m.type === 'stake-failed') { setStatus('❌ ' + m.message); if (m.message.includes('balance')) setPage('wallet') }
-      if (m.type === 'game-start') { setCountdown(0); setJoinedAt(null); setRefundTimer(0); setRefundStatus(''); setStatus(`🎉 Opponent found! vs ${m.opponent} — You are ${m.color === 'w' ? 'White' : 'Black'}`); setRoom(m.room); setOpponent(m.opponent); setPage('play'); addTimeline(`🎯 Game Started vs ${m.opponent}`, 'start') }
-      if (m.type === 'stake-settled') { setLastPayout(m); setStatus(`💰 Auto-Paid! 🥇 ${m.winner} K${m.winnerPayout} • 🥈 ${m.second || '—'} K${m.secondPayout || 0}`); addTimeline(`💰 Auto-Paid: 🥇 ${m.winner} K${m.winnerPayout} • 🥈 ${m.second || '-'} K${m.secondPayout || 0}`, 'money'); loadWallet() }
-      if (m.type === 'refund-done') { setBalance(m.balance); localStorage.setItem('zed_balance', String(m.balance)); setJoinedArena(null); setJoinedStake(0); setJoinedAt(null); setRefundStatus('✅ Refunded K' + m.stake); addTimeline(`↩️ Refunded K${m.stake} — Arena empty`, 'money') }
-      if (m.type === 'wallet-updated') { setBalance(m.balance); localStorage.setItem('zed_balance', String(m.balance)); loadWallet() }
-    }
-    return () => { clearInterval(interval); clearInterval(heartbeat); ws.close() }
-  }, )
-  if (!user) return <Auth onLogin={setUser} />
-  if (showAdmin && user.role === 'admin') return <AdminDashboard user={user} onLogout={() => { localStorage.removeItem('zed_user'); setUser(null); setShowAdmin(false) }} />
-  const joinTournament = async (id, name, stake) => {
-    const s = stake || 5
-    if (s < 5) { alert('Min stake is K5'); return }
-    if (balance < s) { alert(`Not enough! You have K${balance.toFixed(2)}, need K${s}. Deposit first.`); setPage('wallet'); return }
-    if (!confirm(`Join ${name}?\n\nK${s} will be deducted AUTOMATICALLY.\nBalance: K${balance.toFixed(2)} -> K${(balance - s).toFixed(2)}\n\n✅ If no opponent in 5 MINS, K${s} is REFUNDED automatically.\n❌ If you leave after game starts, NO refund.`)) return
-    setCurrentArena(id); setJoinedArena(id); setJoinedStake(s); setJoinedAt(Date.now()); setRefundStatus(''); setRefundTimer(300)
-    const r = await fetch('/api/pay/join-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: id, stake: s }) })
-    const d = await r.json()
-    if (!r.ok) { setStatus('❌ ' + (d.error || 'Join failed')); setJoinedArena(null); setJoinedStake(0); setJoinedAt(null); if (d.error?.includes('balance')) setPage('wallet'); return }
-    setBalance(d.balance); localStorage.setItem('zed_balance', String(d.balance))
-    setStatus(`💰 K${s} deducted — Joined ${name} — Pot K${d.pot} — Waiting for opponent... If no one in 5:00, auto-refund.`)
-    addTimeline(`💰 Auto Stake: K${s} deducted — Joined ${name} — Pot K${d.pot} — Refund in 5 mins if empty`, 'money')
-    wsRef.current?.send(JSON.stringify({ type: 'join-tournament', tournamentId: id, username: user.username, stake: s }))
-  }
-  const manualRefund = async () => {
-    if (!joinedArena) return;
-    if (!confirm(`Cancel and refund K${joinedStake}? Only if no game has started yet.`)) return;
-    const r = await fetch('/api/pay/refund-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, tournamentId: joinedArena, stake: joinedStake }) });
+    fetch('/api/tournaments').then(r => r.json()).then(d => setTournaments(d.tournaments || [])).catch(()=>{});
+    fetch('/api/courses').then(r => r.json()).then(d => setCourses(d.courses || [])).catch(()=>{});
+  }, []);
+
+  async function register() {
+    const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username, email, password }) });
     const d = await r.json();
-    if (d.ok) { setBalance(d.balance); localStorage.setItem('zed_balance', String(d.balance)); setRefundStatus('✅ Refunded K' + joinedStake); addTimeline(`↩️ Manual Refund K${joinedStake} — Left arena early`, 'money'); setJoinedArena(null); setJoinedStake(0); setJoinedAt(null); setRefundTimer(0); }
-    else setRefundStatus('❌ ' + d.error)
+    setAuthMsg(d.error || d.msg || 'Created! Code is 123456');
+    if (d.ok) setUser(d.user);
   }
-  const createTournament = () => { const name = prompt('Tournament name?'); if (!name) return; const stake = Number(prompt('Stake? Min K5') || '5'); if (stake < 5) { alert('Min K5'); return } wsRef.current?.send(JSON.stringify({ type: 'create-rated-tournament', name, format: 'arena', timeControl: 'blitz', rated: true, max: 16, stake })); setStatus('✅ Arena K' + stake + ' created!') }
-  const logout = () => { localStorage.removeItem('zed_user'); setUser(null) }
-  const requestMobileCode = async () => { if (!mobile || mobile.length < 10) { setStatus('Enter valid mobile'); return } const r = await fetch('/api/pay/request-mobile-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, mobile }) }); const d = await r.json(); if (!r.ok) { setStatus('❌ ' + d.error); return } setMobileStep('verify'); setStatus('📱 Code sent') }
-  const verifyMobile = async () => { const r = await fetch('/api/pay/verify-mobile', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, mobile, code: mobileCode }) }); const d = await r.json(); if (!r.ok) { setStatus('❌ ' + d.error); return } setMobileVerified(true); localStorage.setItem('zed_mobile_verified', 'yes'); localStorage.setItem('zed_mobile', mobile); setMobileStep('done'); setStatus('✅ Mobile verified!') }
-  const doDeposit = async () => { if (!mobileVerified) { setStatus('⚠️ Verify mobile first.'); setPage('wallet'); return } const amt = Number(payAmount); if (!amt || amt < 5) { setStatus('Min deposit K5'); return } setStatus('⏳ Sending MoMo prompt...'); const r = await fetch('/api/pay/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, amount: amt, mobile, provider: payProvider }) }); const d = await r.json(); if (!r.ok) { setStatus('❌ ' + d.error); return } setStatus('📱 ' + (d.message || 'Check phone PIN')); addPayHistory({ id: Date.now(), type: 'deposit', amount: amt, provider: payProvider, status: d.status || 'pending', date: new Date().toLocaleString() }); addTimeline(`⬇️ Deposit K${amt} via ${payProvider}`, 'money') }
-  const doWithdraw = async () => { if (!mobileVerified) { setStatus('⚠️ Verify mobile first.'); setPage('wallet'); return } const amt = Number(payAmount); if (!amt || amt < 5) { setStatus('Min withdraw K5'); return } if (amt > balance) { setStatus('❌ Not enough'); return } if (!confirm(`Withdraw K${amt} to ${mobile}?`)) return; const r = await fetch('/api/pay/withdraw', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: user.username, amount: amt, mobile, provider: payProvider }) }); const d = await r.json(); if (!r.ok) { setStatus('❌ ' + d.error); return } setStatus('✅ Withdraw sent!'); addPayHistory({ id: Date.now(), type: 'withdraw', amount: amt, provider: payProvider, status: d.status || 'processing', date: new Date().toLocaleString() }); addTimeline(`⬆️ Withdraw K${amt}`, 'money'); loadWallet() }
-  const btn = (active) => ({ padding: '10px 16px', border: 0, borderRadius: 10, fontWeight: 700, cursor: 'pointer', background: active ? '#22c55e' : '#1e293b', color: '#fff' })
-  const card = { background: '#1e293b', padding: 16, borderRadius: 14, marginBottom: 12 }
-  const totalInArenas = tournaments.reduce((a,t)=>a+(t.playerCount||0),0)
-  const filteredTimeline = timelineFilter === 'all' ? timeline : timeline.filter(t=>t.type===timelineFilter)
-  const refundMins = Math.floor(refundTimer / 60); const refundSecs = refundTimer % 60
-  const TimelineView = () => (<div style={card}><h3 style={{marginTop:0}}>🕒 Arena Timeline — Live</h3><div style={{display:'flex', gap:6, flexWrap:'wrap', marginBottom:12}}><button style={btn(timelineFilter==='all')} onClick={()=>setTimelineFilter('all')}>All</button><button style={btn(timelineFilter==='win')} onClick={()=>setTimelineFilter('win')}>🏆 Wins</button><button style={btn(timelineFilter==='money')} onClick={()=>setTimelineFilter('money')}>💰 Money</button></div>{filteredTimeline.length===0 ? <p style={{fontSize:13, opacity:0.7}}>No activity yet. Join K5 arena to start.</p> : filteredTimeline.map(e=>(<div key={e.id} style={{display:'flex', gap:10, padding:'8px 0', borderBottom:'1px solid #334155', fontSize:13}}><span style={{color:'#eab308', fontWeight:700, minWidth:50}}>{e.time}</span><span style={{flex:1}}>{e.text}</span></div>))}</div>)
-  return (
-    <div style={{ background: '#0f172a', color: '#fff', minHeight: '100vh', padding: 16, paddingTop: 70, maxWidth: 1000, margin: '0 auto', position: 'relative' }}>
-      <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 999, display: 'flex', gap: 6, alignItems: 'center', background: '#1e293b', padding: '8px 10px', borderRadius: 12, border: '2px solid #eab308' }}><span>💰</span><span style={{fontWeight:800}}>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</span><button onClick={toggleBalance} style={{background:'#0f172a', color:'#fff', border:0, borderRadius:8, padding:'6px 10px', cursor:'pointer'}}>{showBalance ? '👁️' : '🙈'}</button><button onClick={()=>setPage('wallet')} style={{background:'#22c55e', color:'#fff', border:0, borderRadius:8, padding:'6px 10px', cursor:'pointer', fontWeight:700}}>Wallet</button></div>
-      <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:16}}><h1 style={{margin:0, marginRight:8}}>♔ Zed Gambit</h1><button style={btn(page==='home')} onClick={()=>setPage('home')}>🏠 Home</button><button style={btn(page==='play')} onClick={()=>setPage('play')}>♟️ Play Now</button><button style={btn(page==='tournaments')} onClick={()=>setPage('tournaments')}>🏆 Arenas</button><button style={btn(page==='stake')} onClick={()=>setPage('stake')}>💰 Stake Games</button><button style={btn(page==='wallet')} onClick={()=>setPage('wallet')}>👛 Wallet</button><button style={btn(page==='timeline')} onClick={()=>setPage('timeline')}>🕒 Timeline</button><button style={btn(page==='leaderboard')} onClick={()=>setPage('leaderboard')}>📊 Leaderboard</button>{user.role==='admin' && <button style={{...btn(false), background:'#a855f7'}} onClick={()=>setShowAdmin(true)}>🛡️ Admin</button>}<button style={{...btn(false), background:'#ef4444'}} onClick={logout}>🚪 Logout</button></div>
-      <div style={{background:'#1e293b', padding:12, borderRadius:10, marginBottom:16, fontSize:14}}>👤 <b>{user.name}</b> (@{user.username}) • Rating: <b>{user.rating}</b> • Online: <b>{totalInArenas} in arenas</b><br/>💰 Balance: <b>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</b> • 📱 {mobileVerified ? mobile + ' ✅' : 'Not verified ⚠️'} • 🕒 {now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}<br/>🔥 Endless: <b>{arenaScore} pts</b> • {gamesPlayed} games • Streak: {streak} • Min Bet <b>K5</b> • <b>AUTO STAKES + AUTO REFUND 5 MINS</b>{joinedArena && (<div style={{marginTop:8, background:'#7c2d12', padding:10, borderRadius:8}}>🎯 Joined <b>{joinedArena}</b> — Stake <b>K{joinedStake}</b> deducted — {room ? 'Game Started ✅ — No refund now' : <>⏳ Waiting for opponent — Auto-Refund in <b>{refundMins}:{refundSecs.toString().padStart(2,'0')}</b> if no one comes</>} <button onClick={manualRefund} style={{background:'#fff', color:'#000', border:0, borderRadius:6, padding:'4px 10px', cursor:'pointer', fontWeight:700, marginLeft:8}}>↩️ Cancel & Refund Now</button></div>)}{refundStatus && <div style={{marginTop:8, background:'#14532d', padding:10, borderRadius:8}}>{refundStatus}</div>}{status && <div style={{marginTop:6}}>📢 {status}</div>}{lastPayout && <div style={{marginTop:8, background:'#14532d', padding:10, borderRadius:8}}>💰 <b>Last Auto-Payout:</b> 🥇 {lastPayout.winner} K{lastPayout.winnerPayout} • 🥈 {lastPayout.second || 'No 2nd'} K{lastPayout.secondPayout || 0}</div>}{countdown>0 && <div style={{marginTop:6, fontSize:18, fontWeight:800, color:'#22c55e'}}>⏳ Next game in {countdown}...</div>}{room && <div style={{marginTop:6}}>🎲 Room: <b>{room}</b> {opponent && <>vs {opponent}</>}</div>}</div>
-      {page==='home' && (<div><h2>Welcome to Zed Gambit 🇿🇲 — Auto Stakes + Auto Refund</h2><p>Tap Join → K5 deducted → If no opponent in 5:00, K5 comes back automatically. Safe to try.</p><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}><button style={{...btn(false), padding:20, fontSize:18, background:'#22c55e'}} onClick={()=>setPage('tournaments')}>🏆 Join K5 Arena — Auto Refund</button><button style={{...btn(false), padding:20, fontSize:18, background:'#eab308', color:'#000'}} onClick={()=>setPage('wallet')}>👛 Deposit from K5</button><button style={{...btn(false), padding:20, fontSize:18}} onClick={()=>setPage('play')}>♟️ Quick Play</button><button style={{...btn(false), padding:20, fontSize:18}} onClick={()=>setPage('timeline')}>🕒 View Timeline</button></div><div style={{...card, marginTop:16, border:'2px solid #22c55e'}}><h3 style={{margin:0}}>🛡️ How Auto-Refund Protects You</h3><p style={{fontSize:13}}>1. Join K5 → K5 deducted → 2. Timer starts 5:00 → 3. Opponent comes? Play! → 4. No one in 5:00? <b>K5 auto-refunded to Wallet.</b><br/>You never lose money for waiting alone.</p><div style={{display:'flex', gap:8, flexWrap:'wrap'}}><button style={{...btn(true)}} onClick={()=>joinTournament('MEGA1', 'Mega K5 Arena', 5)}>🌍 Join K5 Mega — Refund in 5 Mins if Empty</button><button style={{...btn(false), background:'#eab308', color:'#000'}} onClick={()=>joinTournament('BLITZ1', 'Blitz K10 Arena', 10)}>⚡ Join K10</button><button style={{...btn(false)}} onClick={()=>joinTournament('RAPID1', 'Rapid K20 Arena', 20)}>🚀 Join K20</button></div></div><h3 style={{marginTop:20}}>🔥 Live Arenas — From K5 — Auto Refund</h3>{tournaments.map(t=>{ const p = calcPayout(t.stake||5, Math.max(t.playerCount||1, 3)); return (<div key={t.id} style={card}><b>{t.name}</b> — Stake <b>K{t.stake||5}</b> • {t.playerCount}/{t.max} • Pot: <b>K{(t.stake||5)*(t.playerCount||0)}</b><br/><small>💰 🥇 Winner ~K{p.winner.toFixed(2)} • 🥈 2nd ~K{p.second.toFixed(2)} • Auto-Refund 5 Mins</small><br/><button style={{...btn(true), marginTop:8}} onClick={()=>joinTournament(t.id, t.name, t.stake||5)}>✅ Join K{t.stake||5} — Auto Deduct + Auto Refund</button></div>) })}<TimelineView /></div>)}
-      {page==='timeline' && (<div><h2>🕒 Arena Timeline</h2><TimelineView /></div>)}
-      {page==='play' && (<div style={card}><h2>♟️ Play Now — Auto Stake K{joinedStake||5}</h2>{joinedArena && <p style={{background:'#14532d', padding:10, borderRadius:8}}>✅ You are IN {joinedArena} — K{joinedStake} paid — {room ? 'Game Started — No refund now' : `Waiting — Refund in ${refundMins}:${refundSecs.toString().padStart(2,'0')} if empty`}</p>}{room ? (<div><p>Room <b>{room}</b> vs <b>{opponent}</b></p><p>Score: {arenaScore} pts • Streak: {streak}</p><div style={{display:'flex', gap:8, flexWrap:'wrap'}}><button style={{...btn(true)}} onClick={()=>finishGame('win')}>🏆 I Won</button><button style={btn(false)} onClick={()=>finishGame('draw')}>🤝 Draw</button><button style={{...btn(false), background:'#ef4444'}} onClick={()=>finishGame('loss')}>😔 I Lost</button></div>{countdown>0 && <p style={{fontSize:20, fontWeight:800, color:'#22c55e'}}>Next game in {countdown}...</p>}</div>) : (<div><p>No game yet.</p><button style={btn(true)} onClick={()=>joinTournament('MEGA1', 'Mega K5 Arena', 5)}>🌍 Join K5 Mega — Auto Refund</button>{joinedArena && <button style={{...btn(false), background:'#ef4444', marginLeft:8}} onClick={manualRefund}>↩️ Cancel & Refund K{joinedStake}</button>}</div>)}<div style={{marginTop:16}}><button style={btn(false)} onClick={()=>{const r=prompt('Enter Room Code:'); if(r) setRoom(r)}}>🔑 Join by Room Code</button></div></div>)}
-      {page==='tournaments' && (<div><h2>🏆 Arenas — Auto Stakes + Auto Refund 5 Mins</h2><button style={{...btn(true), marginBottom:12}} onClick={createTournament}>➕ Create Arena (Min K5)</button><button style={{...btn(false), marginLeft:8, marginBottom:12}} onClick={loadTournaments}>🔄 Refresh</button>{tournaments.map(t=>{ const p = calcPayout(t.stake||5, Math.max(t.playerCount||1, 3)); return (<div key={t.id} style={card}><b>{t.name}</b><br/><small>Stake K{t.stake||5} • {t.playerCount}/{t.max} • Pot K{(t.stake||5)*(t.playerCount||0)}</small><br/><small>🥇 K{p.winner.toFixed(2)} • 🥈 K{p.second.toFixed(2)} • Refund 5 Mins if Empty</small><br/><button style={{...btn(true), marginTop:8}} onClick={()=>joinTournament(t.id, t.name, t.stake||5)}>✅ Join K{t.stake||5} — Auto Refund</button></div>) })}<TimelineView /></div>)}
-      {page==='wallet' && (<div><h2>👛 Wallet — Deposit from K5</h2><div style={card}><h3 style={{margin:0}}>Balance: {showBalance ? `K${balance.toFixed(2)}` : 'K****'}</h3><p style={{fontSize:12, opacity:0.7}}>Min Deposit K5 • Min Withdraw K5 • Auto-Refund goes here</p></div><div style={card}><h3>📱 Verify Mobile</h3>{mobileVerified ? (<p>✅ Verified: <b>{mobile}</b></p>) : (<div><div style={{display:'flex', gap:8, flexWrap:'wrap'}}><input placeholder="0977123456" value={mobile} onChange={e=>setMobile(e.target.value)} style={{padding:10, borderRadius:8, flex:1}} /><button style={btn(true)} onClick={requestMobileCode}>Send SMS Code</button></div>{mobileStep==='verify' && (<div style={{display:'flex', gap:8, marginTop:10}}><input placeholder="Enter code" value={mobileCode} onChange={e=>setMobileCode(e.target.value)} style={{padding:10, borderRadius:8, flex:1}} /><button style={{...btn(true), background:'#eab308', color:'#000'}} onClick={verifyMobile}>Verify</button></div>)}</div>)}</div><div style={card}><h3>💰 Deposit / Withdraw — From K5</h3><div style={{display:'flex', gap:8, flexWrap:'wrap', marginBottom:10}}><select value={payProvider} onChange={e=>setPayProvider(e.target.value)} style={{padding:10, borderRadius:8}}><option value="MTN">MTN MoMo</option><option value="Airtel">Airtel Money</option><option value="Zamtel">Zamtel Kwacha</option></select><input placeholder="Amount K" value={payAmount} onChange={e=>setPayAmount(e.target.value)} style={{padding:10, borderRadius:8, width:120}} /><button style={{...btn(false), background:'#22c55e'}} onClick={()=>setPayAmount('5')}>K5</button><button style={{...btn(false), background:'#22c55e'}} onClick={()=>setPayAmount('10')}>K10</button><button style={{...btn(false), background:'#22c55e'}} onClick={()=>setPayAmount('50')}>K50</button><button style={{...btn(false), background:'#22c55e'}} onClick={()=>setPayAmount('100')}>K100</button></div><div style={{display:'flex', gap:8, flexWrap:'wrap'}}><button style={{...btn(true), padding:14, fontSize:16, flex:1}} onClick={doDeposit}>⬇️ Deposit K{payAmount||0}</button><button style={{...btn(false), background:'#eab308', color:'#000', padding:14, fontSize:16, flex:1}} onClick={doWithdraw}>⬆️ Withdraw K{payAmount||0}</button></div></div><div style={card}><h3>📋 Payment History — Including Refunds</h3>{payHistory.map(h=>(<div key={h.id} style={{display:'flex', justifyContent:'space-between', fontSize:13, padding:'6px 0', borderBottom:'1px solid #334155'}}><span>{h.type==='deposit' ? '⬇️ Deposit' : h.type==='refund' ? '↩️ Refund' : h.type==='stake' ? '💰 Stake' : '⬆️ Withdraw'} • {h.provider} • {h.date}</span><span><b>K{h.amount}</b> • {h.status}</span></div>))}</div></div>)}
-      {page==='stake' && (<div><h2>💰 Stake Games — Auto From K5 — 🥇70% 🥈30% — Refund 5 Mins</h2><p style={{fontSize:13}}>Your Balance: <b>K{balance.toFixed(2)}</b> — Tap Join, money deducted automatically. No opponent in 5 mins = auto-refund.</p>{tournaments.filter(t=>(t.stake||0)>=5).map(t=>{ const p = calcPayout(t.stake||5, Math.max(t.playerCount||1, 3)); return (<div key={t.id} style={card}><b>{t.name}</b> — Stake <b>K{t.stake}</b> • {t.playerCount}/{t.max} • Pot K{(t.stake||5)*(t.playerCount||0)}<br/><small>🥇 Winner ~K{p.winner.toFixed(2)} • 🥈 2nd ~K{p.second.toFixed(2)} • Refund 5 Mins if Empty</small><br/><button style={{...btn(false), background:'#eab308', color:'#000', marginTop:8}} onClick={()=>joinTournament(t.id, t.name, t.stake)}>💰 Join K{t.stake} — Auto Deduct + Auto Refund</button></div>) })}<div style={card}><h3>📊 Payout Table — If 10 Players Join</h3><table style={{width:'100%', fontSize:13}}><thead><tr><th align="left">Stake</th><th>Pot</th><th>🥇 Winner</th><th>🥈 2nd</th><th>Admin</th></tr></thead><tbody>{[5,10,20,50,100].map(s=>{ const p=calcPayout(s,10); return (<tr key={s}><td>K{s}</td><td>K{p.pot}</td><td><b>K{p.winner.toFixed(2)}</b></td><td><b>K{p.second.toFixed(2)}</b></td><td>K{p.adminFee.toFixed(2)}</td></tr>) })}</tbody></table></div></div>)}
-      {page==='leaderboard' && (<div><h2>📊 Leaderboard</h2><button style={btn(false)} onClick={loadStats}>🔄 Refresh</button>{stats?.users?.sort((a,b)=>b.rating-a.rating).map((u,i)=>(<div key={u.username} style={card}>#{i+1} <b>{u.name}</b> (@{u.username}) — Rating {u.rating} • Games {u.games} • Wins {u.wins} {i===0 ? '🥇' : i===1 ? '🥈' : ''}</div>))}<div style={card}><b>Your Arena:</b> {arenaScore} pts • {gamesPlayed} games • Streak {streak}</div></div>)}
-      <p style={{fontSize:12, opacity:0.6, textAlign:'center', marginTop:20}}>Zed Gambit • Auto Stakes K5+ • Auto Refund 5 Mins if No Opponent • 🥇 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
+
+  async function joinArena(t) {
+    const r = await fetch('/api/pay/join-arena', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username || 'Pazed200', tournamentId: t.id, stake: t.stake }) });
+    const d = await r.json();
+    if (d.error) { alert(d.error); return; }
+    setBalance(d.balance);
+    // OPEN ARENA DETAILS AFTER PAYMENT
+    const ar = await fetch('/api/arena/' + t.id).then(x => x.json());
+    setArena({ ...ar.arena, pot: ar.pot, winnerPrize: ar.winnerPrize, secondPrize: ar.secondPrize, players: ar.players });
+    setRoom('ROOM-' + Math.floor(Math.random()*9000+1000));
+    setView('arena');
+  }
+
+  function onSquareClick(sq) {
+    if (selected === sq) { setSelected(null); return; }
+    if (selected) {
+      try {
+        const game = new Chess(fen);
+        const move = game.move({ from: selected, to: sq, promotion: 'q' });
+        if (move) {
+          setFen(game.fen());
+          setChess(game);
+          setSelected(null);
+          setMsg('You played ' + move.san + '... Computer thinking...');
+          // Computer replies
+          setTimeout(() => {
+            const moves = game.moves({ verbose: true });
+            if (moves.length === 0) { setMsg('Game Over!'); return; }
+            const randomMove = moves[Math.floor(Math.random() * moves.length)];
+            game.move(randomMove);
+            setFen(game.fen());
+            setChess(game);
+            setMsg('Computer played ' + randomMove.san + ' - Your move');
+            fetch('/api/play/computer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ move: move.san }) });
+          }, 600);
+          return;
+        }
+      } catch {}
+    }
+    // Select own piece
+    const game = new Chess(fen);
+    const piece = game.get(sq);
+    if (piece && piece.color === game.turn()) setSelected(sq);
+  }
+
+  function renderBoard() {
+    const game = new Chess(fen);
+    const rows = [];
+    for (let r = 8; r >= 1; r--) {
+      const cols = [];
+      for (let c = 0; c < 8; c++) {
+        const file = 'abcdefgh'[c];
+        const sq = file + r;
+        const piece = game.get(sq);
+        const isDark = (r + c) % 2 === 0;
+        const symbols = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚', P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕', K: '♔' };
+        let sym = '';
+        if (piece) sym = symbols[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+        cols.push(
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 42, height: 42, background: selected === sq ? '#22c55e' : isDark ? '#769656' : '#eeeed2', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 28, cursor: 'pointer', color: piece?.color === 'w' ? '#fff' : '#000', textShadow: '0 1px 2px #000' }}>
+            {sym}
+          </div>
+        );
+      }
+      rows.push(<div key={r} style={{ display: 'flex' }}>{cols}</div>);
+    }
+    return <div style={{ border: '3px solid #333', width: 336, margin: '0 auto' }}>{rows}</div>;
+  }
+
+  async function reportResult(result) {
+    const r = await fetch('/api/game-result', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: username || 'Pazed200', name, result, streak }) });
+    const d = await r.json();
+    setPoints(d.points || points);
+    if (result === 'win') { setStreak(streak + 1); setGames(games + 1); alert('You won! +4 pts'); }
+    if (result === 'draw') { setGames(games + 1); alert('Draw +1 pt'); }
+    if (result === 'win' || result === 'draw' || result === 'loss') setView('home');
+  }
+
+  // HOME SCREEN - Like your screenshot
+  if (view === 'home') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, fontFamily: 'sans-serif' }}>
+      <div style={{ background: '#1e293b', padding: 16, borderRadius: 16 }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between' }}>
+          <div>👤 {name}<br/>1200 • Online<br/>🕐 12:06 AM<br/>🔥 Endless: {points} pts • {games} games • Streak: {streak}<br/>Min Bet K5 • AUTO STAKES + AUTO REFUND 5 MINS</div>
+          <div style={{ background: '#000', padding: '8px 12px', borderRadius: 20, border: '2px solid #facc15' }}>💰 K{balance}.00 👁️ <button onClick={() => setView('wallet')} style={{ background: '#22c55e', border: 0, padding: '6px 12px', borderRadius: 8, color: '#fff' }}>Wallet</button></div>
+        </div>
+        <div>📣 🏆 You won! +4 pts<br/>🎲 Room: {room}</div>
+      </div>
+
+      <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
+        <button onClick={() => setView('computer')} style={{ flex: 1, padding: 14, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>🤖 Play vs Computer</button>
+        <button onClick={() => setView('courses')} style={{ flex: 1, padding: 14, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>📚 Chess Courses</button>
+      </div>
+
+      <div style={{ background: '#1e293b', padding: 20, borderRadius: 16, marginTop: 16 }}>
+        <h2>♟️ Play Now — Auto Stake K5</h2>
+        <p>Room {room} vs</p>
+        <p>Score: {points} pts • Streak: {streak}</p>
+        <div style={{ display: 'flex', gap: 8 }}>
+          <button onClick={() => reportResult('win')} style={{ flex: 1, padding: 12, background: '#22c55e', border: 0, borderRadius: 10 }}>🏆 I Won</button>
+          <button onClick={() => reportResult('draw')} style={{ flex: 1, padding: 12, background: '#334155', color: '#fff', border: 0, borderRadius: 10 }}>💛 Draw</button>
+          <button onClick={() => reportResult('loss')} style={{ flex: 1, padding: 12, background: '#ef4444', border: 0, borderRadius: 10 }}>😞 I Lost</button>
+        </div>
+        <p style={{ textAlign: 'center', marginTop: 12 }}>🔑 Join by Room Code</p>
+      </div>
+
+      <h3 style={{ marginTop: 20 }}>🏆 Arenas — Tap to Join & See Details</h3>
+      {tournaments.map(t => (
+        <div key={t.id} style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 10 }}>
+          <b>{t.name}</b><br/>Stake: K{t.stake} • Players: {t.playerCount}/{t.max} • Prize: {t.prize}
+          <button onClick={() => joinArena(t)} style={{ display: 'block', width: '100%', marginTop: 10, padding: 12, background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold' }}>Join K{t.stake} - See Arena Details →</button>
+        </div>
+      ))}
+      <p style={{ textAlign: 'center', opacity: 0.7 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins if No Opponent • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
     </div>
-  )
+  );
+
+  if (view === 'computer') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
+      <button onClick={() => setView('home')}>← Back</button>
+      <h2>🤖 Play vs Computer</h2>
+      <p>{msg}</p>
+      {renderBoard()}
+      <p>Tap a piece, then tap where to move it.</p>
+      <button onClick={() => { const g = new Chess(); setFen(g.fen()); setMsg('New game - Your move'); }} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
+      <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
+    </div>
+  );
+
+  if (view === 'arena') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
+      <button onClick={() => setView('home')}>← Back to Home</button>
+      <h2>🏟️ {arena?.name}</h2>
+      <div style={{ background: '#1e293b', padding: 16, borderRadius: 12 }}>
+        <p>💰 <b>Pot: K{arena?.pot}</b></p>
+        <p>🏆 Winner Prize: <b>K{arena?.winnerPrize}</b></p>
+        <p>🥈 2nd Prize: <b>K{arena?.secondPrize}</b></p>
+        <p>👥 Players: {arena?.players} / {arena?.max}</p>
+        <p>🎲 Your Room: {room}</p>
+        <p>📜 Rules: {arena?.rules || '10 min rapid, 2 pts win, 1 draw, 4 for 3-win streak'}</p>
+        <p>📋 Details: {arena?.details || ''}</p>
+      </div>
+      <button onClick={() => setView('computer')} style={{ width: '100%', padding: 14, background: '#22c55e', border: 0, borderRadius: 12, marginTop: 16, fontWeight: 'bold' }}>♟️ Enter Board & Play Now</button>
+    </div>
+  );
+
+  if (view === 'courses') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
+      <button onClick={() => setView('home')}>← Back</button>
+      <h2>📚 Chess Courses</h2>
+      {courses.length === 0 && <p>Loading courses... If empty, make sure Worker has /api/courses (I gave you new Worker).</p>}
+      {courses.map(c => (
+        <div key={c.id} style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 12 }}>
+          <b>{c.title}</b><br/><span style={{ color: '#facc15' }}>{c.level} • {c.lessons} lessons • {c.time}</span><br/>{c.desc}<br/>
+          <button style={{ marginTop: 10, padding: 10, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>Start Lesson →</button>
+        </div>
+      ))}
+    </div>
+  );
+
+  if (view === 'wallet') return (
+    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
+      <button onClick={() => setView('home')}>← Back</button>
+      <h2>💰 Wallet: K{balance}</h2>
+      <p>Deposit K10 to test, then Join Arena.</p>
+      <button onClick={async () => { const r = await fetch('/api/pay/deposit', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, amount: 10 }) }); const d = await r.json(); setBalance(d.balance); alert('Deposited K10'); }} style={{ padding: 14, background: '#22c55e', border: 0, borderRadius: 10 }}>Deposit K10 (Demo)</button>
+    </div>
+  );
+
+  return null;
 }
 
 
- 
