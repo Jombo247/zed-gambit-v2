@@ -313,4 +313,8 @@ export default {
   }
 };
 
+// Dummy exports to satisfy old wrangler.toml - New code uses in-memory, not Durable Objects
+export class ChessRoom { constructor(state, env) { this.state = state; this.env = env; } async fetch() { return new Response('ChessRoom disabled - using new in-memory lobby'); } }
+export class Lobby { constructor(state, env) { this.state = state; this.env = env; } async fetch() { return new Response('Lobby disabled - using new in-memory lobby'); } }
+
 
