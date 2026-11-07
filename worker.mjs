@@ -1,5 +1,12 @@
 
 // ZED GAMBIT v2 - Full Worker
+export class Lobby {
+  constructor(state) { this.state = state; }
+  async fetch(request) {
+    return new Response(JSON.stringify({ ok: true, msg: "Lobby DO alive" }), { headers: { "Content-Type": "application/json" } });
+  }
+}
+
 let users = {};
 let balances = {};
 let tournaments = [
@@ -30,7 +37,6 @@ export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
 
-    // SERVE FRONTEND - App from dist/
     if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/ws')) {
       try {
         if (env.ASSETS) {
@@ -45,7 +51,6 @@ export default {
       return new Response(null, { headers: { "Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "*", "Access-Control-Allow-Methods": "GET,POST,OPTIONS" } });
     }
 
-    // WEBSOCKET - Chess Pairing
     if (url.pathname === '/ws') {
       const upgrade = request.headers.get('Upgrade');
       if (upgrade !== 'websocket') return new Response('Expected websocket', { status: 426 });
@@ -66,13 +71,11 @@ export default {
               const opp = waiting;
               waiting = null;
               const room = 'ROOM-' + Math.floor(Math.random() * 9000 + 1000);
-              const msg = JSON.stringify({ type: 'game-start', room, opponent: opp.username, color: 'white' });
               server.send(JSON.stringify({ type: 'game-start', room, opponent: opp.username, color: 'black' }));
-              try { opp.ws.send(msg); } catch {}
+              try { opp.ws.send(JSON.stringify({ type: 'game-start', room, opponent: m.username, color: 'white' })); } catch {}
             }
           }
           if (m.type === 'move') {
-            // Echo back for demo - frontend handles board
             server.send(JSON.stringify({ type: 'move-ack', move: m.move }));
           }
         } catch {}
@@ -80,12 +83,10 @@ export default {
       return new Response(null, { status: 101, webSocket: client });
     }
 
-    // API - TOURNAMENTS
     if (url.pathname === '/api/tournaments' && request.method === 'GET') {
       return json({ tournaments });
     }
 
-    // API - REGISTER
     if (url.pathname === '/api/register' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (!b.username || !b.password) return json({ error: 'Username + password required' }, 400);
@@ -95,7 +96,6 @@ export default {
       return json({ ok: true, user: { name: users[b.username].name, username: b.username }, balance: balances[b.username] });
     }
 
-    // API - LOGIN
     if (url.pathname === '/api/login' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const u = users[b.username];
@@ -103,20 +103,17 @@ export default {
       return json({ ok: true, user: { name: u.name, username: u.username }, balance: balances[b.username] || 0 });
     }
 
-    // API - VERIFY (Demo code 123456)
     if (url.pathname === '/api/verify' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       if (String(b.code) === '123456') return json({ ok: true, msg: 'Verified' });
       return json({ error: 'Wrong code. Demo code is 123456' }, 400);
     }
 
-    // API - BALANCE
     if (url.pathname === '/api/balance' && request.method === 'GET') {
       const username = url.searchParams.get('username');
       return json({ balance: balances[username] || 0 });
     }
 
-    // API - DEPOSIT (Demo instant)
     if (url.pathname === '/api/pay/deposit' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const amt = Number(b.amount) || 0;
@@ -126,7 +123,6 @@ export default {
       return json({ ok: true, balance: balances[b.username], msg: 'Deposited K' + amt });
     }
 
-    // API - WITHDRAW
     if (url.pathname === '/api/pay/withdraw' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const amt = Number(b.amount) || 0;
@@ -135,7 +131,6 @@ export default {
       return json({ ok: true, balance: balances[b.username], msg: 'Withdraw K' + amt + ' sent' });
     }
 
-    // API - JOIN ARENA - Deduct + Pool
     if (url.pathname === '/api/pay/join-arena' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const t = tournaments.find(x => x.id === b.tournamentId);
@@ -148,7 +143,6 @@ export default {
       return json({ ok: true, balance: balances[b.username], pot: stake * t.playerCount, winner: p.winner, second: p.second, tournament: t });
     }
 
-    // API - REFUND
     if (url.pathname === '/api/pay/refund' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       const stake = Number(b.stake) || 0;
@@ -159,7 +153,6 @@ export default {
       return json({ ok: true, balance: balances[b.username], msg: 'Refunded K' + stake });
     }
 
-    // API - GAME RESULT - Leaderboard
     if (url.pathname === '/api/game-result' && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
       let pts = 0;
@@ -175,7 +168,6 @@ export default {
       return json({ ok: true, points: entry.points, leaderboard: leaderboard.slice(0, 20) });
     }
 
-    // API - LEADERBOARD
     if (url.pathname === '/api/leaderboard' && request.method === 'GET') {
       return json({ leaderboard: leaderboard.slice(0, 20) });
     }
