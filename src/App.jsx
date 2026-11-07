@@ -38,6 +38,11 @@ function formatTime(sec) {
   return `${m}:${s < 10 ? '0' + s : s}`;
 }
 
+// GRAPHICS FIX: Same filled shape for both colours, colour decides look
+// White = WHITE filled shape + thick BLACK outline
+// Black = BLACK filled shape + thin WHITE outline
+const PIECE_GLYPH = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
+
 export default function App() {
   const user = { name: 'Themba Ndhlovu', username: 'Pazed200' };
   const [balance, setBalance] = useState(900);
@@ -51,11 +56,10 @@ export default function App() {
   const [room, setRoom] = useState('123456');
   const [openCourse, setOpenCourse] = useState(null);
 
-  // Chess
   const [fen, setFen] = useState(new Chess().fen());
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
-  const [msg, setMsg] = useState('Choose Level & Time to start');
+  const [msg, setMsg] = useState('Choose Level, Time & Colour to start');
   const [level, setLevel] = useState('Medium');
   const [whiteTime, setWhiteTime] = useState(600);
   const [blackTime, setBlackTime] = useState(600);
@@ -64,6 +68,9 @@ export default function App() {
   const [showSetup, setShowSetup] = useState(true);
   const [setupLevel, setSetupLevel] = useState('Medium');
   const [setupTime, setSetupTime] = useState(600);
+  // NEW: Colour selection
+  const [setupColour, setSetupColour] = useState('Random');
+  const [playerColour, setPlayerColour] = useState('w'); // 'w' or 'b'
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -71,7 +78,6 @@ export default function App() {
     fetch('/api/courses').then(r => r.json()).then(d => { if (d.courses?.length) setCourses(d.courses); }).catch(()=>{});
   }, []);
 
-  // Clock - only ticks if gameActive AND hasMoved
   useEffect(() => {
     if (!gameActive || !hasMoved) return;
     timerRef.current = setInterval(() => {
@@ -87,117 +93,147 @@ export default function App() {
     if (blackTime === 0 && hasMoved) { setMsg('Time up! White wins on time'); setGameActive(false); }
   }, [whiteTime, blackTime, hasMoved]);
 
+  function makeComputerMove(currentFen) {
+    const g2 = new Chess(currentFen);
+    const moves = g2.moves({ verbose: true });
+    if (!moves.length) { setMsg('Game Over!'); setGameActive(false); return; }
+    let comp = null;
+    if (level === 'Easy') comp = moves[Math.floor(Math.random() * moves.length)];
+    else if (level === 'Medium') {
+      const caps = moves.filter(m => m.captured);
+      comp = caps.length && Math.random() > 0.3 ? caps[Math.floor(Math.random() * caps.length)] : moves[Math.floor(Math.random() * moves.length)];
+    } else {
+      const scored = moves.map(m => { let s = Math.random() * 2; if (m.captured) s += 5; if (m.san.includes('+')) s += 3; return { m, s }; });
+      scored.sort((a, b) => b.s - a.s);
+      comp = scored[0].m;
+    }
+    g2.move(comp);
+    setFen(g2.fen());
+    setLastMove({ from: comp.from, to: comp.to });
+    setMsg(`Computer: ${comp.san} - Your move`);
+  }
+
   function startNewGame() {
+    // RANDOM COLOUR SELECTION
+    let colour = 'w';
+    if (setupColour === 'White') colour = 'w';
+    else if (setupColour === 'Black') colour = 'b';
+    else colour = Math.random() < 0.5 ? 'w' : 'b'; // Random
+
     const g = new Chess();
     setFen(g.fen());
     setLastMove(null);
     setSelected(null);
     setLevel(setupLevel);
+    setPlayerColour(colour);
     setWhiteTime(setupTime);
     setBlackTime(setupTime);
     setHasMoved(false);
     setGameActive(false);
-    setMsg(`Ready - ${setupLevel} - ${setupTime / 60} min - White to move first, clock starts after your move`);
     setShowSetup(false);
-  }
 
-  function pickComputerMove(game) {
-    const moves = game.moves({ verbose: true });
-    if (!moves.length) return null;
-    if (level === 'Easy') return moves[Math.floor(Math.random() * moves.length)];
-    if (level === 'Medium') {
-      const captures = moves.filter(m => m.captured);
-      if (captures.length && Math.random() > 0.3) return captures[Math.floor(Math.random() * captures.length)];
-      return moves[Math.floor(Math.random() * moves.length)];
+    if (colour === 'w') {
+      setMsg(`You are WHITE ♔ - ${setupLevel} - ${setupTime / 60} min - Your move first, clock starts after your move`);
+    } else {
+      setMsg(`You are BLACK ♚ - Computer is White, computer moves first...`);
+      // If you are Black, computer (White) moves first, then clock starts
+      setTimeout(() => {
+        setHasMoved(true);
+        setGameActive(true);
+        makeComputerMove(g.fen());
+      }, 800);
     }
-    const scored = moves.map(m => {
-      let s = Math.random() * 2;
-      if (m.captured) s += 5;
-      if (m.san.includes('+')) s += 3;
-      return { m, s };
-    });
-    scored.sort((a, b) => b.s - a.s);
-    return scored[0].m;
   }
 
   function onSquareClick(sq) {
+    const game = new Chess(fen);
+    // Only allow moving your own colour
+    if (game.turn() !== playerColour) { setMsg('Wait - Computer thinking...'); return; }
     if (selected === sq) { setSelected(null); return; }
     if (selected) {
       try {
-        const game = new Chess(fen);
         const move = game.move({ from: selected, to: sq, promotion: 'q' });
         if (move) {
-          // START CLOCK ONLY AFTER WHITE FIRST MOVE
           if (!hasMoved) { setHasMoved(true); setGameActive(true); }
           setFen(game.fen());
           setLastMove({ from: move.from, to: move.to });
           setSelected(null);
           setMsg(`You: ${move.san} - Computer thinking...`);
-          setTimeout(() => {
-            const g2 = new Chess(game.fen());
-            const comp = pickComputerMove(g2);
-            if (comp) {
-              g2.move(comp);
-              setFen(g2.fen());
-              setLastMove({ from: comp.from, to: comp.to });
-              setMsg(`Computer: ${comp.san} - Your move`);
-            } else { setMsg('Game Over!'); setGameActive(false); }
-          }, 500);
+          setTimeout(() => makeComputerMove(game.fen()), 500);
           return;
         }
       } catch {}
     }
-    const game = new Chess(fen);
     const piece = game.get(sq);
-    if (piece && piece.color === game.turn()) setSelected(sq);
+    if (piece && piece.color === playerColour) setSelected(sq);
   }
 
   function renderBoard() {
     const game = new Chess(fen);
     const files = ['a','b','c','d','e','f','g','h'];
-    const symbols = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚', P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕', K: '♔' };
+    // Flip board if you are Black - your pieces at bottom
+    const displayFiles = playerColour === 'w' ? files : [...files].reverse();
+    const displayRanks = playerColour === 'w' ? [8,7,6,5,4,3,2,1] : [1,2,3,4,5,6,7,8];
     const rows = [];
-    for (let r = 8; r >= 1; r--) {
+    for (let ri = 0; ri < 8; ri++) {
+      const r = displayRanks[ri];
       const cols = [];
-      for (let c = 0; c < 8; c++) {
-        const sq = files[c] + r;
+      for (let ci = 0; ci < 8; ci++) {
+        const file = displayFiles[ci];
+        const sq = file + r;
         const piece = game.get(sq);
-        const isDark = (r + c) % 2 === 0;
+        // Real board colour: (file index + rank) determines light/dark
+        const fileIdx = files.indexOf(file);
+        const isDark = (fileIdx + r) % 2 === 0;
         const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
         const isSel = selected === sq;
         let bg = isDark ? '#769656' : '#eeeed2';
         if (isLast) bg = '#facc15';
         if (isSel) bg = '#22c55e';
         let sym = '';
-        if (piece) sym = symbols[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+        if (piece) sym = PIECE_GLYPH[piece.type];
         const isWhitePiece = piece?.color === 'w';
         cols.push(
-          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 42, height: 42, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, cursor: 'pointer', position: 'relative', color: isWhitePiece ? '#FFFFFF' : '#000000', WebkitTextStroke: isWhitePiece ? '1.5px #000' : '0.5px #fff', textShadow: isWhitePiece ? '0 0 2px #000, 0 1px 1px #000' : '0 1px 1px #fff', fontWeight: 'bold' }}>
-            {c === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{r}</span>}
-            {r === 1 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{files[c]}</span>}
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, cursor: 'pointer', position: 'relative', fontWeight: 'bold',
+            // GRAPHICS: White = pure white fill, Black = pure black fill
+            color: !piece ? '#000' : isWhitePiece ? '#FFFFFF' : '#000000',
+            WebkitTextStroke: !piece ? '0px' : isWhitePiece ? '2px #000000' : '1px #FFFFFF',
+            textShadow: !piece ? 'none' : isWhitePiece ? '0 2px 3px #000, 0 0 2px #000' : '0 1px 2px #fff',
+          }}>
+            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{r}</span>}
+            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{file}</span>}
             {sym}
           </div>
         );
       }
       rows.push(<div key={r} style={{ display: 'flex', justifyContent: 'center' }}>{cols}</div>);
     }
-    return <div style={{ border: '3px solid #333', width: 336, margin: '0 auto', background: '#fff' }}>{rows}</div>;
+    return <div style={{ border: '3px solid #333', width: 320, margin: '0 auto', background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>{rows}</div>;
   }
 
   function BoardWithClocks() {
     const turn = new Chess(fen).turn();
+    // If you are White, you are at bottom. If Black, you are at bottom too (board flips)
+    const youAreWhite = playerColour === 'w';
+    const topLabel = youAreWhite ? '⬛ Black • Computer' : '⬜ White • Computer';
+    const topTime = youAreWhite ? blackTime : whiteTime;
+    const bottomLabel = youAreWhite ? `⬜ White - You (${user.username})` : `⬛ Black - You (${user.username})`;
+    const bottomTime = youAreWhite ? whiteTime : blackTime;
+    const topIsTurn = (youAreWhite && turn === 'b') || (!youAreWhite && turn === 'w');
+    const bottomIsTurn = (youAreWhite && turn === 'w') || (!youAreWhite && turn === 'b');
     return (
       <div>
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: turn === 'b' && hasMoved ? '2px solid #facc15' : '2px solid #333' }}>
-          <span>⬛ Black • {level}</span>
-          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace', color: blackTime < 60 ? '#ef4444' : '#fff' }}>⏱ {formatTime(blackTime)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: youAreWhite ? '#111' : '#fff', color: youAreWhite ? '#fff' : '#000', padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: topIsTurn && hasMoved ? '2px solid #facc15' : '2px solid #333' }}>
+          <span>{topLabel}</span>
+          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(topTime)}</span>
         </div>
         {renderBoard()}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', color: '#000', padding: '10px 14px', borderRadius: 10, marginTop: 8, border: turn === 'w' && hasMoved ? '2px solid #22c55e' : '2px solid #333' }}>
-          <span>⬜ White - You ({user.username})</span>
-          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace', color: whiteTime < 60 ? '#ef4444' : '#000' }}>⏱ {formatTime(whiteTime)}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: youAreWhite ? '#fff' : '#111', color: youAreWhite ? '#000' : '#fff', padding: '10px 14px', borderRadius: 10, marginTop: 8, border: bottomIsTurn && hasMoved ? '2px solid #22c55e' : '2px solid #333' }}>
+          <span>{bottomLabel}</span>
+          <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(bottomTime)}</span>
         </div>
-        <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused - play first move to start'}</p>
+        <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused'}</p>
+        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE ♔ - White pieces at bottom' : 'BLACK ♚ - Black pieces at bottom'}</p>
       </div>
     );
   }
@@ -261,7 +297,7 @@ export default function App() {
       <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
         <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
         <h2>🤖 Play vs Computer</h2>
-        <p>Choose Level & Time First</p>
+        <p>Choose Level, Time & Colour First</p>
         <h3>1. Choose Level</h3>
         <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
           {['Easy','Medium','Hard'].map(l => (
@@ -276,9 +312,20 @@ export default function App() {
             <button key={t.val} onClick={() => setSetupTime(t.val)} style={{ padding: '12px 16px', borderRadius: 12, border: setupTime === t.val ? '3px solid #22c55e' : '1px solid #555', background: setupTime === t.val ? '#22c55e' : '#334155', color: '#fff', fontWeight: 'bold' }}>{t.label}</button>
           ))}
         </div>
-        <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 20 }}>
-          <p>You chose: <b>{setupLevel}</b> • <b>{setupTime / 60} min</b> each</p>
-          <p style={{ fontSize: 13, opacity: 0.8 }}>Clock will NOT start until White plays first move.</p>
+        <h3 style={{ marginTop: 20 }}>3. Choose Colour 🎲</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {[
+            { label: '⬜ White', val: 'White' },
+            { label: '⬛ Black', val: 'Black' },
+            { label: '🎲 Random', val: 'Random' },
+          ].map(c => (
+            <button key={c.val} onClick={() => setSetupColour(c.val)} style={{ padding: '14px 18px', borderRadius: 12, border: setupColour === c.val ? '3px solid #facc15' : '1px solid #555', background: setupColour === c.val ? '#facc15' : '#334155', color: setupColour === c.val ? '#000' : '#fff', fontWeight: 'bold', fontSize: 16 }}>{c.label}</button>
+          ))}
+        </div>
+        <p style={{ fontSize: 13, opacity: 0.8, marginTop: 8 }}>{setupColour === 'Random' ? '🎲 Coin flip - 50% White, 50% Black. Board will flip if you get Black.' : setupColour === 'Black' ? 'You will be Black at bottom, Computer moves first.' : 'You will be White at bottom, you move first.'}</p>
+        <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 16 }}>
+          <p>You chose: <b>{setupLevel}</b> • <b>{setupTime / 60} min</b> • <b>{setupColour}</b></p>
+          <p style={{ fontSize: 13, opacity: 0.8 }}>Clock will NOT start until first move is played.</p>
         </div>
         <button onClick={startNewGame} style={{ width: '100%', padding: 16, background: '#22c55e', border: 0, borderRadius: 12, marginTop: 20, fontWeight: 'bold', fontSize: 16 }}>▶️ Start Game → Open Board</button>
       </div>
@@ -286,9 +333,9 @@ export default function App() {
     return (
       <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
         <button onClick={() => { setView('home'); setShowSetup(true); }} style={{ float: 'left' }}>← Back</button>
-        <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Level / Time</button>
+        <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Setup</button>
         <h2>🤖 Play vs Computer</h2>
-        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • {hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
+        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • You are <b>{playerColour === 'w' ? 'WHITE ♔' : 'BLACK ♚'}</b><br/>{hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
         <BoardWithClocks />
         <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
         <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
@@ -309,11 +356,8 @@ export default function App() {
         <p>📜 Rules: {arena?.rules}</p>
         <p>📋 {arena?.details}</p>
       </div>
-      <h3 style={{ textAlign: 'center' }}>♟️ Arena Board — With Clock + Last Move Hint</h3>
-      <div style={{ textAlign: 'center' }}>
-        <BoardWithClocks />
-        <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>▶️ Start Arena Game</button>
-      </div>
+      <h3 style={{ textAlign: 'center' }}>♟️ Arena Board</h3>
+      <div style={{ textAlign: 'center' }}><BoardWithClocks /><button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>▶️ Start Arena Game</button></div>
     </div>
   );
 
