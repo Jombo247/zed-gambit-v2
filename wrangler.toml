@@ -3,41 +3,6 @@ name = "zed-gambit-v2"
 compatibility_date = "2024-01-01"
 main = "worker.mjs"
 
-[assets]
-directory = "./dist"
-binding = "ASSETS"
 
-
-ENV = "production"
-
-
-4. Tap Commit changes
-
-That tells Cloudflare: "The App design is in dist/ folder, serve it."
-
-Fix 2: worker.mjs — Add 1 Block at Top of fetch
-
-1. In same GitHub repo → Open worker.mjs → Tap Edit
-2. Find this line at top of fetch:
-
-js
-async fetch(request, env, ctx) {
-  const url = new URL(request.url);
-
-
-3. Paste this RIGHT AFTER that line:
-
-js
-  // SERVE FRONTEND - If not API / WS, serve App from dist/
-  if (!url.pathname.startsWith('/api') && !url.pathname.startsWith('/ws')) {
-    try {
-      if (env.ASSETS) {
-        let asset = await env.ASSETS.fetch(request);
-        if (asset.status !== 404) return asset;
-        // SPA fallback - always return index.html for React
-        return await env.ASSETS.fetch(new Request(new URL('/index.html', request.url)));
-      }
-    } catch {}
-  }
 
 
