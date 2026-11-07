@@ -18,6 +18,20 @@ const FALLBACK_COURSES = [
   { id: "C6", title: "Blitz & Arena Psychology", level: "Advanced", lessons: 6, time: "40 min", desc: "Win K5/K10 arenas: time, tilt, streak." },
 ];
 
+const TRAINING = {
+  C1: [
+    { q: "Lesson 1: Pawn moves 1 or 2 forward, captures diagonally", answer: "Pawn" },
+    { q: "Lesson 2: Knight jumps in L shape - 2 + 1. Only piece that jumps.", answer: "Knight" },
+    { q: "Lesson 3: Bishop moves diagonally. Stays on same colour.", answer: "Bishop" },
+    { q: "Lesson 4: Rook moves straight. Best on open files.", answer: "Rook" },
+  ],
+  C3: [
+    { q: "Puzzle 1: FORK - Knight attacks King + Queen at same time.", answer: "Fork wins Queen" },
+    { q: "Puzzle 2: PIN - Bishop pins Knight to King, Knight cannot move.", answer: "Pin" },
+    { q: "Puzzle 3: SKEWER - Rook attacks Queen, Queen moves, King behind falls.", answer: "Skewer" },
+  ],
+};
+
 function formatTime(sec) {
   const m = Math.floor(sec / 60);
   const s = sec % 60;
@@ -26,7 +40,6 @@ function formatTime(sec) {
 
 export default function App() {
   const user = { name: 'Themba Ndhlovu', username: 'Pazed200' };
-
   const [balance, setBalance] = useState(900);
   const [view, setView] = useState('home');
   const [tournaments, setTournaments] = useState(FALLBACK_ARENAS);
@@ -36,16 +49,21 @@ export default function App() {
   const [games, setGames] = useState(18);
   const [streak, setStreak] = useState(2);
   const [room, setRoom] = useState('123456');
+  const [openCourse, setOpenCourse] = useState(null);
 
-  // Chess State - Shared for Computer + Arena
+  // Chess
   const [fen, setFen] = useState(new Chess().fen());
   const [selected, setSelected] = useState(null);
-  const [lastMove, setLastMove] = useState(null); // {from, to}
-  const [msg, setMsg] = useState('Your move - You are White');
-  const [level, setLevel] = useState('Easy'); // Easy | Medium | Hard
-  const [whiteTime, setWhiteTime] = useState(600); // 10:00
+  const [lastMove, setLastMove] = useState(null);
+  const [msg, setMsg] = useState('Choose Level & Time to start');
+  const [level, setLevel] = useState('Medium');
+  const [whiteTime, setWhiteTime] = useState(600);
   const [blackTime, setBlackTime] = useState(600);
   const [gameActive, setGameActive] = useState(false);
+  const [hasMoved, setHasMoved] = useState(false);
+  const [showSetup, setShowSetup] = useState(true);
+  const [setupLevel, setSetupLevel] = useState('Medium');
+  const [setupTime, setSetupTime] = useState(600);
   const timerRef = useRef(null);
 
   useEffect(() => {
@@ -53,31 +71,34 @@ export default function App() {
     fetch('/api/courses').then(r => r.json()).then(d => { if (d.courses?.length) setCourses(d.courses); }).catch(()=>{});
   }, []);
 
-  // Chess Clock - ticks only for player to move
+  // Clock - only ticks if gameActive AND hasMoved
   useEffect(() => {
-    if (!gameActive) return;
+    if (!gameActive || !hasMoved) return;
     timerRef.current = setInterval(() => {
       const g = new Chess(fen);
       if (g.turn() === 'w') setWhiteTime(t => Math.max(0, t - 1));
       else setBlackTime(t => Math.max(0, t - 1));
     }, 1000);
     return () => clearInterval(timerRef.current);
-  }, [gameActive, fen]);
+  }, [gameActive, hasMoved, fen]);
 
   useEffect(() => {
-    if (whiteTime === 0) { setMsg('⏰ Time up! Black wins on time'); setGameActive(false); }
-    if (blackTime === 0) { setMsg('⏰ Time up! White wins on time'); setGameActive(false); }
-  }, [whiteTime, blackTime]);
+    if (whiteTime === 0 && hasMoved) { setMsg('Time up! Black wins on time'); setGameActive(false); }
+    if (blackTime === 0 && hasMoved) { setMsg('Time up! White wins on time'); setGameActive(false); }
+  }, [whiteTime, blackTime, hasMoved]);
 
   function startNewGame() {
     const g = new Chess();
     setFen(g.fen());
     setLastMove(null);
     setSelected(null);
-    setWhiteTime(level === 'Hard' ? 300 : level === 'Medium' ? 600 : 900);
-    setBlackTime(level === 'Hard' ? 300 : level === 'Medium' ? 600 : 900);
-    setGameActive(true);
-    setMsg(`New game - ${level} - Your move, White`);
+    setLevel(setupLevel);
+    setWhiteTime(setupTime);
+    setBlackTime(setupTime);
+    setHasMoved(false);
+    setGameActive(false);
+    setMsg(`Ready - ${setupLevel} - ${setupTime / 60} min - White to move first, clock starts after your move`);
+    setShowSetup(false);
   }
 
   function pickComputerMove(game) {
@@ -85,35 +106,33 @@ export default function App() {
     if (!moves.length) return null;
     if (level === 'Easy') return moves[Math.floor(Math.random() * moves.length)];
     if (level === 'Medium') {
-      // Prefer captures, then checks
       const captures = moves.filter(m => m.captured);
       if (captures.length && Math.random() > 0.3) return captures[Math.floor(Math.random() * captures.length)];
       return moves[Math.floor(Math.random() * moves.length)];
     }
-    // Hard - Prefer captures + checks + centre
     const scored = moves.map(m => {
       let s = Math.random() * 2;
       if (m.captured) s += 5;
       if (m.san.includes('+')) s += 3;
-      if (['e4','d4','e5','d5','Nf3','Nc3','Nf6','Nc6'].includes(m.san)) s += 2;
       return { m, s };
     });
-    scored.sort((a,b) => b.s - a.s);
+    scored.sort((a, b) => b.s - a.s);
     return scored[0].m;
   }
 
   function onSquareClick(sq) {
-    if (!gameActive) { setMsg('Tap New Game to start clock'); return; }
     if (selected === sq) { setSelected(null); return; }
     if (selected) {
       try {
         const game = new Chess(fen);
         const move = game.move({ from: selected, to: sq, promotion: 'q' });
         if (move) {
+          // START CLOCK ONLY AFTER WHITE FIRST MOVE
+          if (!hasMoved) { setHasMoved(true); setGameActive(true); }
           setFen(game.fen());
           setLastMove({ from: move.from, to: move.to });
           setSelected(null);
-          setMsg(`You: ${move.san} • Computer thinking... (${level})`);
+          setMsg(`You: ${move.san} - Computer thinking...`);
           setTimeout(() => {
             const g2 = new Chess(game.fen());
             const comp = pickComputerMove(g2);
@@ -121,10 +140,8 @@ export default function App() {
               g2.move(comp);
               setFen(g2.fen());
               setLastMove({ from: comp.from, to: comp.to });
-              setMsg(`Computer: ${comp.san} • Your move`);
-            } else {
-              setMsg('Game Over!'); setGameActive(false);
-            }
+              setMsg(`Computer: ${comp.san} - Your move`);
+            } else { setMsg('Game Over!'); setGameActive(false); }
           }, 500);
           return;
         }
@@ -140,11 +157,8 @@ export default function App() {
     const files = ['a','b','c','d','e','f','g','h'];
     const symbols = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚', P: '♙', N: '♘', B: '♗', R: '♖', Q: '♕', K: '♔' };
     const rows = [];
-    // Row 8 at top, Row 1 at bottom - FIDE rules, White at bottom
     for (let r = 8; r >= 1; r--) {
       const cols = [];
-      // Rank number on left
-      cols.push(<div key={'num'+r} style={{ width: 18, height: 42, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, fontWeight: 'bold', color: '#facc15' }}>{r}</div>);
       for (let c = 0; c < 8; c++) {
         const sq = files[c] + r;
         const piece = game.get(sq);
@@ -152,40 +166,38 @@ export default function App() {
         const isLast = lastMove && (lastMove.from === sq || lastMove.to === sq);
         const isSel = selected === sq;
         let bg = isDark ? '#769656' : '#eeeed2';
-        if (isLast) bg = '#facc15'; // HINT LAST MOVE - yellow
+        if (isLast) bg = '#facc15';
         if (isSel) bg = '#22c55e';
         let sym = '';
         if (piece) sym = symbols[piece.color === 'w' ? piece.type.toUpperCase() : piece.type];
+        const isWhitePiece = piece?.color === 'w';
         cols.push(
-          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 42, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 26, cursor: 'pointer', color: piece?.color === 'w' ? '#fff' : '#111', textShadow: '0 1px 2px #000', border: isLast ? '2px solid #eab308' : 'none' }}>
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 42, height: 42, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 30, cursor: 'pointer', position: 'relative', color: isWhitePiece ? '#FFFFFF' : '#000000', WebkitTextStroke: isWhitePiece ? '1.5px #000' : '0.5px #fff', textShadow: isWhitePiece ? '0 0 2px #000, 0 1px 1px #000' : '0 1px 1px #fff', fontWeight: 'bold' }}>
+            {c === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{r}</span>}
+            {r === 1 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none' }}>{files[c]}</span>}
             {sym}
           </div>
         );
       }
       rows.push(<div key={r} style={{ display: 'flex', justifyContent: 'center' }}>{cols}</div>);
     }
-    // File letters a-h at bottom
-    const fileRow = [<div key="corner" style={{ width: 18 }} />];
-    files.forEach(f => fileRow.push(<div key={f} style={{ width: 40, textAlign: 'center', fontSize: 12, fontWeight: 'bold', color: '#facc15' }}>{f}</div>));
-    rows.push(<div key="files" style={{ display: 'flex', justifyContent: 'center' }}>{fileRow}</div>);
-    return <div style={{ border: '3px solid #333', background: '#0f172a', padding: 4, width: 360, margin: '0 auto' }}>{rows}</div>;
+    return <div style={{ border: '3px solid #333', width: 336, margin: '0 auto', background: '#fff' }}>{rows}</div>;
   }
 
   function BoardWithClocks() {
+    const turn = new Chess(fen).turn();
     return (
       <div>
-        {/* BLACK CLOCK - TOP */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: new Chess(fen).turn() === 'b' ? '2px solid #facc15' : '2px solid #333' }}>
-          <span>⬛ Black {level === 'Hard' ? '• Hard' : ''}</span>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#111', padding: '10px 14px', borderRadius: 10, marginBottom: 8, border: turn === 'b' && hasMoved ? '2px solid #facc15' : '2px solid #333' }}>
+          <span>⬛ Black • {level}</span>
           <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace', color: blackTime < 60 ? '#ef4444' : '#fff' }}>⏱ {formatTime(blackTime)}</span>
         </div>
         {renderBoard()}
-        {/* WHITE CLOCK - BOTTOM */}
-        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', color: '#000', padding: '10px 14px', borderRadius: 10, marginTop: 8, border: new Chess(fen).turn() === 'w' ? '2px solid #22c55e' : '2px solid #333' }}>
+        <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#fff', color: '#000', padding: '10px 14px', borderRadius: 10, marginTop: 8, border: turn === 'w' && hasMoved ? '2px solid #22c55e' : '2px solid #333' }}>
           <span>⬜ White - You ({user.username})</span>
           <span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace', color: whiteTime < 60 ? '#ef4444' : '#000' }}>⏱ {formatTime(whiteTime)}</span>
         </div>
-        <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move Hint • 🟢 Green = Selected • Clock ticks for player to move</p>
+        <p style={{ fontSize: 12, opacity: 0.8 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused - play first move to start'}</p>
       </div>
     );
   }
@@ -219,12 +231,10 @@ export default function App() {
         </div>
         <div>📣 🏆 You won! +4 pts<br/>🎲 Room: {room}</div>
       </div>
-
       <div style={{ display: 'flex', gap: 8, marginTop: 16 }}>
-        <button onClick={() => { setView('computer'); startNewGame(); }} style={{ flex: 1, padding: 14, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>🤖 Play vs Computer</button>
+        <button onClick={() => { setView('computer'); setShowSetup(true); }} style={{ flex: 1, padding: 14, background: '#7c3aed', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>🤖 Play vs Computer</button>
         <button onClick={() => setView('courses')} style={{ flex: 1, padding: 14, background: '#0ea5e9', color: '#fff', border: 0, borderRadius: 12, fontWeight: 'bold' }}>📚 Chess Courses</button>
       </div>
-
       <div style={{ background: '#1e293b', padding: 20, borderRadius: 16, marginTop: 16 }}>
         <h2>♟️ Play Now — Auto Stake K5</h2>
         <p>Room {room} vs</p><p>Score: {points} pts • Streak: {streak}</p>
@@ -235,7 +245,6 @@ export default function App() {
         </div>
         <p style={{ textAlign: 'center', marginTop: 12 }}>🔑 Join by Room Code</p>
       </div>
-
       <h3 style={{ marginTop: 20 }}>🏆 ARENAS — Tap to Join & See Details ({tournaments.length} Arenas)</h3>
       {tournaments.map(t => (
         <div key={t.id} style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
@@ -247,25 +256,46 @@ export default function App() {
     </div>
   );
 
-  if (view === 'computer') return (
-    <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
-      <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
-      <h2>🤖 Play vs Computer</h2>
-      {/* LEVEL SWITCH */}
-      <div style={{ display: 'flex', gap: 8, justifyContent: 'center', marginBottom: 12 }}>
-        {['Easy','Medium','Hard'].map(l => (
-          <button key={l} onClick={() => { setLevel(l); setTimeout(startNewGame, 50); }} style={{ padding: '10px 18px', borderRadius: 20, border: level === l ? '2px solid #facc15' : '1px solid #555', background: level === l ? '#facc15' : '#334155', color: level === l ? '#000' : '#fff', fontWeight: 'bold' }}>
-            {l === 'Easy' ? '😊 Easy (15 min)' : l === 'Medium' ? '😐 Medium (10 min)' : '🔥 Hard (5 min)'}
-          </button>
-        ))}
+  if (view === 'computer') {
+    if (showSetup) return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
+        <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
+        <h2>🤖 Play vs Computer</h2>
+        <p>Choose Level & Time First</p>
+        <h3>1. Choose Level</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center' }}>
+          {['Easy','Medium','Hard'].map(l => (
+            <button key={l} onClick={() => setSetupLevel(l)} style={{ padding: '12px 18px', borderRadius: 20, border: setupLevel === l ? '3px solid #facc15' : '1px solid #555', background: setupLevel === l ? '#facc15' : '#334155', color: setupLevel === l ? '#000' : '#fff', fontWeight: 'bold' }}>
+              {l === 'Easy' ? '😊 Easy' : l === 'Medium' ? '😐 Medium' : '🔥 Hard'}
+            </button>
+          ))}
+        </div>
+        <h3 style={{ marginTop: 20 }}>2. Choose Time</h3>
+        <div style={{ display: 'flex', gap: 8, justifyContent: 'center', flexWrap: 'wrap' }}>
+          {[{ label: '⚡ Blitz 3 min', val: 180 },{ label: '⏱ Rapid 5 min', val: 300 },{ label: '🕐 Rapid 10 min', val: 600 },{ label: '🐢 Classical 15 min', val: 900 }].map(t => (
+            <button key={t.val} onClick={() => setSetupTime(t.val)} style={{ padding: '12px 16px', borderRadius: 12, border: setupTime === t.val ? '3px solid #22c55e' : '1px solid #555', background: setupTime === t.val ? '#22c55e' : '#334155', color: '#fff', fontWeight: 'bold' }}>{t.label}</button>
+          ))}
+        </div>
+        <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 20 }}>
+          <p>You chose: <b>{setupLevel}</b> • <b>{setupTime / 60} min</b> each</p>
+          <p style={{ fontSize: 13, opacity: 0.8 }}>Clock will NOT start until White plays first move.</p>
+        </div>
+        <button onClick={startNewGame} style={{ width: '100%', padding: 16, background: '#22c55e', border: 0, borderRadius: 12, marginTop: 20, fontWeight: 'bold', fontSize: 16 }}>▶️ Start Game → Open Board</button>
       </div>
-      <p>Level: <b>{level}</b> • {msg}</p>
-      <BoardWithClocks />
-      <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game ({level})</button>
-      <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
-      {lastMove && <p>Last Move Hint: <b style={{ background: '#facc15', color: '#000', padding: '2px 8px', borderRadius: 6 }}>{lastMove.from} → {lastMove.to}</b> — Yellow squares on board</p>}
-    </div>
-  );
+    );
+    return (
+      <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16, textAlign: 'center' }}>
+        <button onClick={() => { setView('home'); setShowSetup(true); }} style={{ float: 'left' }}>← Back</button>
+        <button onClick={() => setShowSetup(true)} style={{ float: 'right', padding: '6px 12px', background: '#facc15', border: 0, borderRadius: 8 }}>⚙️ Change Level / Time</button>
+        <h2>🤖 Play vs Computer</h2>
+        <p>Level: <b>{level}</b> • Time: <b>{setupTime / 60} min</b> • {hasMoved ? msg : '⏸ Clock paused - Play first move to start clock'}</p>
+        <BoardWithClocks />
+        <button onClick={startNewGame} style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 10, marginTop: 12 }}>🔄 New Game</button>
+        <button onClick={() => reportResult('win')} style={{ padding: 12, background: '#facc15', border: 0, borderRadius: 10, marginLeft: 8 }}>I Beat Computer 🏆</button>
+        {lastMove && <p>Last Move: <b style={{ background: '#facc15', color: '#000', padding: '2px 8px', borderRadius: 6 }}>{lastMove.from} → {lastMove.to}</b></p>}
+      </div>
+    );
+  }
 
   if (view === 'arena') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
@@ -294,7 +324,14 @@ export default function App() {
       {courses.map(c => (
         <div key={c.id} style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 12 }}>
           <b>{c.title}</b><br/><span style={{ color: '#facc15' }}>{c.level} • {c.lessons} lessons • {c.time}</span><br/>{c.desc}<br/>
-          <button style={{ marginTop: 10, padding: 10, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>Start Lesson →</button>
+          <button onClick={() => setOpenCourse(openCourse === c.id ? null : c.id)} style={{ marginTop: 10, padding: 10, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>{openCourse === c.id ? 'Close' : 'Start Lesson →'}</button>
+          {openCourse === c.id && (
+            <div style={{ background: '#000', padding: 12, borderRadius: 8, marginTop: 10 }}>
+              {(TRAINING[c.id] || [{ q: 'Lesson coming soon for ' + c.title, answer: 'Check back soon' }]).map((l, i) => (
+                <div key={i} style={{ background: '#1e293b', padding: 10, marginBottom: 8, borderRadius: 8 }}><b>{i + 1}. {l.q}</b><br/><span style={{ color: '#facc15' }}>💡 {l.answer}</span></div>
+              ))}
+            </div>
+          )}
         </div>
       ))}
     </div>
