@@ -26,7 +26,7 @@ export default function ChessBoard() {
     setSel(pc && pc.color === game.turn() ? sq : null)
   }
   const board = game.board()
-  const targets = sel ? game.moves({ from: sel, verbose: true }).map(m => m.to) : []
+  const targets = sel ? game.moves({ square: sel, verbose: true }).map(m => m.to) : []
   const btn = (a) => ({ padding: '8px 16px', background: a ? '#22c55e' : '#333', color: 'white', border: 'none', borderRadius: 8 })
   return (
     <div>
