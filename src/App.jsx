@@ -1,5 +1,3 @@
-You are right — external images keep failing. Lichess blocks them on some networks, so Knights disappear.
-
 
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
