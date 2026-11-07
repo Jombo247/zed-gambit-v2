@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { Chess } from 'chess.js'
 
 const P = { K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟' }
@@ -8,48 +8,98 @@ const fmt = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`
 export default function OnlineChess({ onBack }) {
   const [wallet, setWallet] = useState(() => parseInt(localStorage.getItem('zed_wallet') || '500'))
   const [stake, setStake] = useState(20)
-  const [room, setRoom] = useState('')
   const [joinCode, setJoinCode] = useState('')
+  const [room, setRoom] = useState('')
   const [inGame, setInGame] = useState(false)
+  const [myColor, setMyColor] = useState('w')
+  const [connected, setConnected] = useState(false)
   const [game, setGame] = useState(new Chess())
   const [sel, setSel] = useState(null)
   const [status, setStatus] = useState('White to move')
   const [wt, setWt] = useState(600)
   const [bt, setBt] = useState(600)
   const [result, setResult] = useState('')
+  const wsRef = useRef(null)
 
   const over = game.isCheckmate() || game.isDraw()
+
   useEffect(() => {
     if (!inGame || over) return
-    const id = setInterval(() => { if (game.turn() === 'w') setWt(t => Math.max(0, t-1)); else setBt(t => Math.max(0, t-1)) }, 1000)
+    const id = setInterval(() => {
+      if (game.turn() === 'w') setWt(t => Math.max(0, t-1)); else setBt(t => Math.max(0, t-1))
+    }, 1000)
     return () => clearInterval(id)
   }, [game, inGame, over])
 
   const saveWallet = (v) => { setWallet(v); localStorage.setItem('zed_wallet', String(v)) }
+
+  const connect = (code, isCreator) => {
+    const proto = window.location.protocol === 'https:' ? 'wss://' : 'ws://'
+    const ws = new WebSocket(`${proto}${window.location.host}/ws?room=${code}`)
+    wsRef.current = ws
+    ws.onopen = () => {
+      setConnected(true)
+      setStatus(isCreator ? `Room ${code} - Waiting for opponent... Share code on WhatsApp` : `Joined ${code} - Waiting...`)
+      ws.send(JSON.stringify({ type: 'stake', stake }))
+    }
+    ws.onmessage = (e) => {
+      const msg = JSON.parse(e.data)
+      if (msg.type === 'assign') {
+        setMyColor(msg.color === 'b' ? 'b' : 'w')
+        setGame(new Chess(msg.fen))
+        if (msg.players >= 2) setStatus('Both players connected - White to move')
+      }
+      if (msg.type === 'move') {
+        setGame(new Chess(msg.fen))
+        const g = new Chess(msg.fen)
+        if (g.isCheckmate()) setStatus(`Checkmate! ${g.turn() === 'b' ? 'White wins pot!' : 'Black wins pot!'}`)
+        else if (g.isDraw()) setStatus('Draw! Stake refunded')
+        else setStatus(g.turn() === 'w' ? 'White to move' : 'Black to move')
+      }
+      if (msg.type === 'player-left') setStatus('Opponent left - waiting...')
+    }
+    ws.onclose = () => setConnected(false)
+  }
+
   const createRoom = () => {
     if (wallet < stake) return alert('Not enough balance! Top up demo coins.')
     const code = Math.random().toString(36).slice(2, 8).toUpperCase()
-    setRoom(code); saveWallet(wallet - stake); setInGame(true); setStatus(`Room ${code} - Pot K${stake * 2} - White to move`)
+    setRoom(code); saveWallet(wallet - stake); setInGame(true); setGame(new Chess()); setWt(600); setBt(600); setResult('')
+    connect(code, true)
   }
+
   const joinRoom = () => {
     if (!joinCode.trim()) return alert('Enter room code')
     if (wallet < stake) return alert('Not enough balance!')
-    setRoom(joinCode.toUpperCase()); saveWallet(wallet - stake); setInGame(true); setStatus(`Joined ${joinCode.toUpperCase()} - Pot K${stake * 2} - White to move`)
+    const code = joinCode.toUpperCase()
+    setRoom(code); saveWallet(wallet - stake); setInGame(true); setGame(new Chess()); setWt(600); setBt(600); setResult('')
+    connect(code, false)
   }
+
+  const leave = () => {
+    try { wsRef.current?.close() } catch(e) {}
+    setInGame(false); setConnected(false)
+  }
+
   const claimWin = () => {
     const pot = stake * 2
     saveWallet(wallet + pot); setResult(`You won K${pot}! New balance K${wallet + pot}`)
   }
+
   const topUp = () => { saveWallet(wallet + 500); alert('Demo +K500 added') }
 
   const click = (sq) => {
+    if (!connected) return alert('Not connected yet')
+    if (game.turn() !== myColor) return
     if (sel) {
       const mv = game.moves({ square: sel, verbose: true }).find(x => x.to === sq)
       if (mv) {
         const g = new Chess(game.fen()); g.move(mv); setSel(null); setGame(g)
-        if (g.isCheckmate()) { setStatus(`Checkmate! ${g.turn() === 'b' ? 'White wins pot!' : 'Black wins pot!'}`); return }
-        if (g.isDraw()) { setStatus('Draw! Stake refunded'); return }
-        setStatus(g.turn() === 'w' ? 'White to move' : 'Black to move'); return
+        wsRef.current?.send(JSON.stringify({ type: 'move', from: mv.from, to: mv.to, fen: g.fen() }))
+        if (g.isCheckmate()) setStatus(`Checkmate! ${g.turn() === 'b' ? 'White wins pot!' : 'Black wins pot!'}`)
+        else if (g.isDraw()) setStatus('Draw! Stake refunded')
+        else setStatus(g.turn() === 'w' ? 'White to move' : 'Black to move')
+        return
       }
     }
     const pc = game.get(sq); setSel(pc && pc.color === game.turn() ? sq : null)
@@ -88,7 +138,7 @@ export default function OnlineChess({ onBack }) {
           <p style={{ fontSize: 11, opacity: 0.7, marginTop: 8 }}>Share your code on WhatsApp. Both players stake same amount.</p>
         </div>
         <div style={{ background: '#222', padding: 10, borderRadius: 8, marginTop: 12, fontSize: 12, lineHeight: 1.5 }}>
-          <b>Rules:</b> 10 min clock • Checkmate wins pot • Draw = refund • Disconnect = forfeit • 18+ only
+          <b>Rules:</b> 10 min clock • Checkmate wins pot • Draw = refund • Disconnect = forfeit • 18+ only • Demo only
         </div>
       </div>
     )
@@ -96,13 +146,13 @@ export default function OnlineChess({ onBack }) {
 
   return (
     <div style={{ maxWidth: 480, margin: '0 auto', padding: 12, color: '#fff' }}>
-      <button onClick={() => setInGame(false)} style={btn(false)}>← Leave</button>
+      <button onClick={leave} style={btn(false)}>← Leave</button>
       <div style={{ display: 'flex', justifyContent: 'space-between', background: '#198A00', padding: 12, borderRadius: 8, margin: '12px 0', fontWeight: 'bold' }}>
         <span>🏆 POT: K{stake * 2}</span><span>💰 Wallet: K{wallet}</span><span>Room: {room}</span>
       </div>
-      <p style={{ textAlign: 'center' }}>{status}</p>
+      <p style={{ textAlign: 'center' }}>{status} • You are {myColor === 'w' ? 'White' : 'Black'} • {connected ? '🟢 Live' : '🔴 Connecting...'}</p>
       {result && <div style={{ background: '#EF7D00', padding: 12, borderRadius: 8, textAlign: 'center', fontWeight: 'bold', margin: '8px 0' }}>{result}</div>}
-      <div style={{ display: 'flex', justifyContent: 'space-between', background: '#222', padding: 8, borderRadius: 8 }}><span>♟️ Black</span><b>{fmt(bt)}</b></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', background: '#222', padding: 8, borderRadius: 8 }}><span>♟️ {myColor === 'w' ? 'Opponent (Black)' : 'Opponent (White)'}</span><b>{fmt(myColor === 'w' ? bt : wt)}</b></div>
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(8, 1fr)', width: '100%', margin: '8px 0', borderRadius: 6, overflow: 'hidden' }}>
         {board.flat().map((sq, i) => {
           const name = sq ? sq.square : `${'abcdefgh'[i % 8]}${8 - Math.floor(i / 8)}`
@@ -112,10 +162,9 @@ export default function OnlineChess({ onBack }) {
           return <button key={name} onClick={() => click(name)} style={{ aspectRatio: '1', fontSize: 28, background: bg, border: 'none', color: sq?.color === 'w' ? 'white' : 'black', textShadow: '0 0 3px black', padding: 0 }}>{ch}</button>
         })}
       </div>
-      <div style={{ display: 'flex', justifyContent: 'space-between', background: '#222', padding: 8, borderRadius: 8 }}><span>♔ You (White)</span><b>{fmt(wt)}</b></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', background: '#222', padding: 8, borderRadius: 8 }}><span>♔ You ({myColor === 'w' ? 'White' : 'Black'})</span><b>{fmt(myColor === 'w' ? wt : bt)}</b></div>
       {over && <button onClick={claimWin} style={{ ...btn(true, '#EF7D00'), width: '100%', marginTop: 12, fontSize: 16 }}>💰 CLAIM WIN - K{stake * 2}</button>}
-      <p style={{ textAlign: 'center', fontSize: 12, opacity: 0.7, marginTop: 8 }}>Play on same phone for demo. Real online with 2 phones comes next.</p>
+      <p style={{ textAlign: 'center', fontSize: 12, opacity: 0.7, marginTop: 8 }}>Real online: 2 phones, same room code. Demo coins only.</p>
     </div>
   )
 }
-
