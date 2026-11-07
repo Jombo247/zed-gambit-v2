@@ -1,100 +1,157 @@
-// ZED GAMBIT - P2 Live Lobby + Tournaments + Real-time Challenges
-// Demo only. No real money.
 
-export class Lobby {
-  constructor(state) { this.state = state; this.users = new Map(); this.tournaments = new Map(); }
-  async fetch(req) {
-    if (req.headers.get("Upgrade") !== "websocket") return new Response("Expected WS", { status: 426 });
-    const pair = new WebSocketPair();
-    const [client, server] = Object.values(pair);
-    server.accept();
-    const id = Math.random().toString(36).slice(2, 10);
-    let me = { id, name: "Player", rating: 1200, status: "online" };
-    this.users.set(id, { ws: server, ...me });
-    const broadcast = (obj) => {
-      const data = JSON.stringify(obj);
-      for (const u of this.users.values()) { try { u.ws.send(data); } catch(e){} }
-    };
-    const sendList = () => {
-      const list = [...this.users.values()].map(u => ({ id: u.id, name: u.name, rating: u.rating, status: u.status }));
-      const tours = [...this.tournaments.values()];
-      broadcast({ type: "lobby", users: list, tournaments: tours, count: list.length });
-    };
-    server.addEventListener("message", (e) => {
-      try {
-        const m = JSON.parse(e.data);
-        if (m.type === "join-lobby") { me.name = (m.name || "Player").slice(0, 20); me.rating = m.rating || 1200; const u = this.users.get(id); if (u) { u.name = me.name; u.rating = me.rating; } sendList(); }
-        if (m.type === "challenge") {
-          const target = this.users.get(m.to);
-          if (target) target.ws.send(JSON.stringify({ type: "challenge-incoming", from: id, fromName: me.name, stake: m.stake, room: m.room }));
-        }
-        if (m.type === "challenge-accept") {
-          const target = this.users.get(m.to);
-          if (target) target.ws.send(JSON.stringify({ type: "challenge-accepted", room: m.room, by: me.name }));
-          server.send(JSON.stringify({ type: "challenge-accepted", room: m.room, by: me.name }));
-        }
-        if (m.type === "challenge-decline") {
-          const target = this.users.get(m.to);
-          if (target) target.ws.send(JSON.stringify({ type: "challenge-declined", by: me.name }));
-        }
-        if (m.type === "create-tournament") {
-          const t = { id: Math.random().toString(36).slice(2, 8).toUpperCase(), name: m.name || "Zed Open", stake: m.stake || 20, max: m.max || 8, players: [me.name], status: "open", createdBy: me.name, createdAt: Date.now() };
-          this.tournaments.set(t.id, t); sendList();
-        }
-        if (m.type === "join-tournament") {
-          const t = this.tournaments.get(m.tournamentId);
-          if (t && t.status === "open" && !t.players.includes(me.name)) {
-            t.players.push(me.name);
-            if (t.players.length >= t.max) t.status = "full";
-            sendList();
-          }
-        }
-      } catch(e){}
-    });
-    server.addEventListener("close", () => { this.users.delete(id); sendList(); });
-    server.send(JSON.stringify({ type: "welcome", id }));
-    return new Response(null, { status: 101, webSocket: client });
-  }
+// Zed Gambit - Worker P3 Rated Tournaments + Elo
+function calcElo(rA, rB, score, gamesPlayed) {
+  const K = gamesPlayed < 30 ? 32 : 20
+  const expected = 1 / (1 + Math.pow(10, (rB - rA) / 400))
+  return Math.round(rA + K * (score - expected))
 }
 
 export class ChessRoom {
-  constructor(state) { this.state = state; this.sessions = new Set(); this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; this.players = {}; }
-  async fetch(req) {
-    if (req.headers.get("Upgrade") !== "websocket") return new Response("Expected WS", { status: 426 });
-    const pair = new WebSocketPair(); const [client, server] = Object.values(pair); server.accept();
-    const id = Math.random().toString(36).slice(2, 10);
-    const session = { ws: server, id, color: null }; this.sessions.add(session);
-    if (!this.players.white) { this.players.white = id; session.color = "w"; }
-    else if (!this.players.black) { this.players.black = id; session.color = "b"; }
-    else session.color = "spectator";
-    server.send(JSON.stringify({ type: "assign", color: session.color, fen: this.fen, players: Object.keys(this.players).length }));
-    server.addEventListener("message", (e) => {
-      try { const msg = JSON.parse(e.data);
-        if (msg.type === "move") { const turn = this.fen.split(" ")[1]; if (session.color !== turn) return; if (!msg.fen) return; this.fen = msg.fen; this.broadcast({ type: "move", fen: this.fen, from: msg.from, to: msg.to, by: session.color }); }
-        if (msg.type === "reset") { this.fen = "rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1"; this.broadcast({ type: "move", fen: this.fen, reset: true }); }
-      } catch(e){}
+  constructor(state, env) { this.state = state; this.env = env; this.sockets = new Set(); this.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; this.players = []; }
+  async fetch(request) {
+    const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
+    server.accept(); this.sockets.add(server);
+    const url = new URL(request.url); const room = url.searchParams.get('room') || 'default';
+    const color = this.players.length === 0 ? 'w' : 'b';
+    if (this.players.length < 2) this.players.push(server);
+    server.send(JSON.stringify({ type: 'assign', color, fen: this.fen, players: this.players.length, room }));
+    server.addEventListener('message', (e) => {
+      const m = JSON.parse(e.data);
+      if (m.type === 'move') {
+        this.fen = m.fen;
+        for (const s of this.sockets) { if (s !== server) { try { s.send(JSON.stringify({ type: 'move', fen: m.fen, from: m.from, to: m.to })) } catch {} } }
+      }
+      if (m.type === 'game-over' && m.rated) {
+        // Elo update: m.winner = 'w' | 'b' | 'draw', m.whiteRating, m.blackRating, m.whiteGames, m.blackGames
+        const wScore = m.winner === 'draw' ? 0.5 : (m.winner === 'w' ? 1 : 0);
+        const bScore = 1 - wScore;
+        const newW = calcElo(m.whiteRating, m.blackRating, wScore, m.whiteGames || 0);
+        const newB = calcElo(m.blackRating, m.whiteRating, bScore, m.blackGames || 0);
+        for (const s of this.sockets) { try { s.send(JSON.stringify({ type: 'rating-update', whiteNew: newW, blackNew: newB, whiteDelta: newW - m.whiteRating, blackDelta: newB - m.blackRating })) } catch {} }
+      }
     });
-    server.addEventListener("close", () => { this.sessions.delete(session); if (this.players.white === id) delete this.players.white; if (this.players.black === id) delete this.players.black; this.broadcast({ type: "player-left", players: Object.keys(this.players).length }); });
+    server.addEventListener('close', () => { this.sockets.delete(server); this.players = this.players.filter(p => p !== server); for (const s of this.sockets) { try { s.send(JSON.stringify({ type: 'player-left' })) } catch {} } });
     return new Response(null, { status: 101, webSocket: client });
   }
-  broadcast(o) { const d = JSON.stringify(o); for (const s of this.sessions) { try { s.ws.send(d); } catch(e){} } }
+}
+
+export class Lobby {
+  constructor(state, env) { this.state = state; this.env = env; this.users = new Map(); this.tournaments = new Map(); }
+  async fetch(request) {
+    const pair = new WebSocketPair(); const [client, server] = Object.values(pair);
+    server.accept();
+    let myId = Math.random().toString(36).slice(2, 8).toUpperCase();
+    server.send(JSON.stringify({ type: 'welcome', id: myId }));
+    const broadcastLobby = () => {
+      const users = [...this.users.values()].map(u => ({ id: u.id, name: u.name, rating: u.rating }));
+      const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 }));
+      for (const u of this.users.values()) { try { u.ws.send(JSON.stringify({ type: 'lobby', users, tournaments })) } catch {} }
+    };
+    server.addEventListener('message', (e) => {
+      const m = JSON.parse(e.data);
+      if (m.type === 'join-lobby') { this.users.set(myId, { id: myId, name: m.name || 'Player', rating: m.rating || 1200, ws: server }); broadcastLobby(); }
+      if (m.type === 'challenge') {
+        const target = this.users.get(m.to); const me = this.users.get(myId);
+        if (target) target.ws.send(JSON.stringify({ type: 'challenge-incoming', from: myId, fromName: me?.name || 'Player', stake: m.stake, room: m.room }));
+      }
+      if (m.type === 'challenge-accept') {
+        const target = this.users.get(m.to);
+        if (target) target.ws.send(JSON.stringify({ type: 'challenge-accepted', room: m.room }));
+      }
+      if (m.type === 'challenge-decline') {
+        const target = this.users.get(m.to);
+        if (target) target.ws.send(JSON.stringify({ type: 'challenge-declined' }));
+      }
+      // OLD tournaments
+      if (m.type === 'create-tournament') {
+        const id = Math.random().toString(36).slice(2, 6).toUpperCase();
+        const me = this.users.get(myId);
+        this.tournaments.set(id, { id, name: m.name, format: 'swiss', timeControl: 'blitz', stake: m.stake, rated: false, max: m.max || 8, status: 'waiting', players: me ? [{ id: myId, name: me.name, rating: me.rating }] : [] });
+        broadcastLobby();
+      }
+      // NEW P3 Rated tournaments
+      if (m.type === 'create-rated-tournament') {
+        const id = Math.random().toString(36).slice(2, 6).toUpperCase();
+        const me = this.users.get(myId);
+        this.tournaments.set(id, { id, name: m.name, format: m.format || 'arena', timeControl: m.timeControl || 'blitz', stake: m.stake || 0, rated: m.rated !== false, max: m.max || 16, status: 'waiting', players: me ? [{ id: myId, name: me.name, rating: me.rating }] : [], round: 1 });
+        broadcastLobby();
+      }
+      if (m.type === 'join-tournament') {
+        const t = this.tournaments.get(m.tournamentId); const me = this.users.get(myId);
+        if (t && me && !t.players.find(p => p.id === myId)) {
+          t.players.push({ id: myId, name: me.name, rating: me.rating });
+          // Auto-start: Arena starts at 4 players, Swiss/Knockout at 4 or 8
+          const minStart = t.format === 'arena' ? 4 : 4;
+          if (t.players.length >= minStart && t.status === 'waiting') {
+            t.status = 'started';
+            // Pair first 2 players for demo - in full version pair all
+            const room = Math.random().toString(36).slice(2, 8).toUpperCase();
+            for (const p of t.players) {
+              const u = this.users.get(p.id);
+              if (u) u.ws.send(JSON.stringify({ type: 'tournament-started', tournamentId: t.id, room, format: t.format }));
+            }
+          }
+          broadcastLobby();
+        }
+      }
+    });
+    server.addEventListener('close', () => { this.users.delete(myId); broadcastLobby(); });
+    return new Response(null, { status: 101, webSocket: client });
+  }
 }
 
 export default {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
-    if (url.pathname === "/health") return new Response(JSON.stringify({ ok: true, service: "zed-gambit", mode: "p2-lobby" }), { headers: { "content-type": "application/json" } });
-    if (url.pathname === "/ws/lobby") {
-      const id = env.LOBBY.idFromName("global-lobby");
+    if (url.pathname === '/ws/lobby') {
+      const id = env.LOBBY.idFromName('global-lobby');
       return env.LOBBY.get(id).fetch(request);
     }
-    if (url.pathname === "/ws") {
-      const room = url.searchParams.get("room") || "LOBBY";
-      return env.CHESS_ROOM.get(env.CHESS_ROOM.idFromName(room)).fetch(request);
+    if (url.pathname === '/ws') {
+      const room = url.searchParams.get('room') || 'default';
+      const id = env.CHESS_ROOM.idFromName(room);
+      return env.CHESS_ROOM.get(id).fetch(request);
     }
-    if (env.ASSETS) {
-      try { let res = await env.ASSETS.fetch(request); if (res.status === 404 && !url.pathname.includes(".")) res = await env.ASSETS.fetch(new Request(new URL("/index.html", url.origin), request)); return res; } catch(e){}
-    }
-    return new Response("ZED GAMBIT Worker running", { headers: { "content-type": "text/plain" } });
+    return env.ASSETS.fetch(request);
   }
-};
+}
+
+
+2. Wire Rated Tournaments into Home — Edit src/App.jsx
+
+Add at top with other imports:
+jsx
+import RatedTournaments from './RatedTournaments.jsx'
+
+
+Add this block before if (screen === 'computer'):
+jsx
+  if (screen === 'rated') {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <a className="brand" href="#"><span>ZED <strong>GAMBIT</strong></span></a>
+          <span className="status">MVP DEVELOPMENT</span>
+        </header>
+        <main className="main-content">
+          <RatedTournaments
+            onBack={() => setScreen('home')}
+            myRating={parseInt(localStorage.getItem('zed_rating') || '1200')}
+            onPlayRoom={(room, stake) => { setPendingRoom(room); setPendingStake(stake || 0); setScreen('online') }}
+          />
+        </main>
+      </div>
+    )
+  }
+
+
+Add this card inside options-grid, after the Live Lobby card:
+jsx
+            <article className="option-card" onClick={() => setScreen('rated')} style={{ cursor: 'pointer', border: '2px solid #f59e0b' }}>
+              <span className="option-icon">🏆</span>
+              <h3>Rated Tournaments</h3>
+              <p>Arena, Swiss & Knockout. Win rating like Chess.com.</p>
+              <p><span style={{ background: '#f59e0b', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ Play Rated</span></p>
+            </article>
+
+
