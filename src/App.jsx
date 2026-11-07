@@ -1,3 +1,4 @@
+
 import { useState } from 'react'
 import './styles.css'
 import ChessBoard from './ChessBoard.jsx'
@@ -55,6 +56,24 @@ function App() {
     )
   }
 
+  if (screen === 'computer') {
+    return (
+      <div className="app">
+        <header className="topbar">
+          <a className="brand" href="#"><span>ZED <strong>GAMBIT</strong></span></a>
+          <span className="status">MVP DEVELOPMENT</span>
+        </header>
+        <main className="main-content">
+          <button onClick={() => setScreen('home')} style={{ padding: '8px 12px', background: '#333', color: '#fff', border: 'none', borderRadius: 8, marginBottom: 12 }}>← Back</button>
+          <section className="game-section">
+            <h2>Your Chessboard</h2>
+            <ChessBoard />
+          </section>
+        </main>
+      </div>
+    )
+  }
+
   return (
     <div className="app">
       <header className="topbar">
@@ -67,18 +86,14 @@ function App() {
           <h1>Think Smart.<br />Play Bold.</h1>
           <p>Your next chess challenge starts here. Sharpen your strategy and challenge your limits.</p>
         </section>
-        <section className="game-section">
-          <h2>Your Chessboard</h2>
-          <ChessBoard />
-        </section>
         <section className="game-options">
           <h2>Choose Your Challenge</h2>
           <div className="options-grid">
-            <article className="option-card" onClick={() => document.querySelector('.game-section')?.scrollIntoView({ behavior: 'smooth' })} style={{ cursor: 'pointer' }}>
+            <article className="option-card" onClick={() => setScreen('computer')} style={{ cursor: 'pointer' }}>
               <span className="option-icon">🤖</span>
               <h3>Play Computer</h3>
               <p>Challenge the Stockfish chess engine.</p>
-              <p><span style={{ background: '#22c55e', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ Play Now - Tap Board Above</span></p>
+              <p><span style={{ background: '#22c55e', color: 'white', padding: '4px 10px', borderRadius: 20, fontSize: 12 }}>▶ Play Now</span></p>
             </article>
             <article className="option-card" onClick={() => setScreen('online')} style={{ cursor: 'pointer' }}>
               <span className="option-icon">👥</span>
@@ -106,3 +121,5 @@ function App() {
   )
 }
 export default App
+
+
