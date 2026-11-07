@@ -52,6 +52,22 @@ function calcPayout(stake, players) {
   return { pot, fee, tax, net, winner: net * 0.70, second: net * 0.30 };
 }
 
+function doRegister(b) {
+  const username = b.username || b.email || b.name;
+  if (!username || !b.password) return { error: 'Username + password required' };
+  if (users[username]) return { error: 'Username taken' };
+  users[username] = { name: b.name || username, username, email: b.email || '', password: b.password, phone: b.phone || '' };
+  if (balances[username] === undefined) balances[username] = 0;
+  return { ok: true, user: { name: users[username].name, username, email: users[username].email }, balance: 0, msg: 'Account created. Code: 123456' };
+}
+
+function doLogin(b) {
+  const username = b.username || b.email;
+  const u = users[username];
+  if (!u || u.password !== b.password) return { error: 'Wrong username or password' };
+  return { ok: true, user: { name: u.name, username: u.username, email: u.email }, balance: balances[username] || 0 };
+}
+
 export default {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -76,50 +92,47 @@ export default {
       server.addEventListener('message', (e) => {
         try {
           const m = JSON.parse(e.data);
-          if (m.type === 'join-tournament') {
-            server.send(JSON.stringify({ type: 'joined', tournamentId: m.tournamentId }));
-          }
+          if (m.type === 'join-tournament') server.send(JSON.stringify({ type: 'joined', tournamentId: m.tournamentId }));
           if (m.type === 'find-game') {
             if (!waiting) {
               waiting = { ws: server, username: m.username };
               server.send(JSON.stringify({ type: 'waiting', msg: 'Waiting for opponent...' }));
             } else {
-              const opp = waiting;
-              waiting = null;
+              const opp = waiting; waiting = null;
               const room = 'ROOM-' + Math.floor(Math.random() * 9000 + 1000);
               server.send(JSON.stringify({ type: 'game-start', room, opponent: opp.username, color: 'black' }));
               try { opp.ws.send(JSON.stringify({ type: 'game-start', room, opponent: m.username, color: 'white' })); } catch {}
             }
           }
-          if (m.type === 'move') {
-            server.send(JSON.stringify({ type: 'move-ack', move: m.move }));
-          }
+          if (m.type === 'move') server.send(JSON.stringify({ type: 'move-ack', move: m.move }));
         } catch {}
       });
       return new Response(null, { status: 101, webSocket: client });
     }
-    if (url.pathname === '/api/tournaments' && request.method === 'GET') {
-      return json({ tournaments });
-    }
-    if (url.pathname === '/api/register' && request.method === 'POST') {
+
+    if (url.pathname === '/api/tournaments' && request.method === 'GET') return json({ tournaments });
+
+    // AUTH - BOTH /api/register AND /api/auth/register
+    if ((url.pathname === '/api/register' || url.pathname === '/api/auth/register') && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
-      if (!b.username || !b.password) return json({ error: 'Username + password required' }, 400);
-      if (users[b.username]) return json({ error: 'Username taken' }, 400);
-      users[b.username] = { name: b.name || b.username, username: b.username, password: b.password, phone: b.phone || '' };
-      if (balances[b.username] === undefined) balances[b.username] = 0;
-      return json({ ok: true, user: { name: users[b.username].name, username: b.username }, balance: balances[b.username] });
+      const r = doRegister(b);
+      if (r.error) return json(r, 400);
+      return json(r);
     }
-    if (url.pathname === '/api/login' && request.method === 'POST') {
+    // AUTH - LOGIN - BOTH PATHS
+    if ((url.pathname === '/api/login' || url.pathname === '/api/auth/login') && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
-      const u = users[b.username];
-      if (!u || u.password !== b.password) return json({ error: 'Wrong username or password' }, 401);
-      return json({ ok: true, user: { name: u.name, username: u.username }, balance: balances[b.username] || 0 });
+      const r = doLogin(b);
+      if (r.error) return json(r, 401);
+      return json(r);
     }
-    if (url.pathname === '/api/verify' && request.method === 'POST') {
+    // AUTH - VERIFY - ALL PATHS
+    if ((url.pathname === '/api/verify' || url.pathname === '/api/auth/verify' || url.pathname === '/api/auth/verify-code') && request.method === 'POST') {
       const b = await request.json().catch(() => ({}));
-      if (String(b.code) === '123456') return json({ ok: true, msg: 'Verified' });
+      if (String(b.code) === '123456' || String(b.verificationCode) === '123456') return json({ ok: true, msg: 'Verified' });
       return json({ error: 'Wrong code. Demo code is 123456' }, 400);
     }
+
     if (url.pathname === '/api/balance' && request.method === 'GET') {
       const username = url.searchParams.get('username');
       return json({ balance: balances[username] || 0 });
@@ -167,8 +180,7 @@ export default {
       if (b.result === 'win' && b.streak >= 3) pts = 4;
       let entry = leaderboard.find(x => x.username === b.username);
       if (!entry) { entry = { name: b.name || b.username, username: b.username, points: 0, wins: 0, games: 0 }; leaderboard.push(entry); }
-      entry.points += pts;
-      entry.games += 1;
+      entry.points += pts; entry.games += 1;
       if (b.result === 'win') entry.wins += 1;
       leaderboard.sort((a, c) => c.points - a.points);
       return json({ ok: true, points: entry.points, leaderboard: leaderboard.slice(0, 20) });
