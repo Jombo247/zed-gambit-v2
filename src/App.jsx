@@ -1,115 +1,48 @@
 
 import { useState, useEffect, useRef } from 'react'
 import Auth from './Auth.jsx'
-
-// ===== ADMIN DASHBOARD - BUILT INTO APP.JSX, NO SEPARATE FILE NEEDED =====
 function AdminDashboard({ user, onLogout }) {
-  const [stats, setStats] = useState(null)
-  const [fin, setFin] = useState(null)
-  const [tab, setTab] = useState('finance')
-  const [txType, setTxType] = useState('stake_win')
-  const [txAmount, setTxAmount] = useState('')
-  const [txNote, setTxNote] = useState('')
-  const load = async () => {
-    const s = await (await fetch('/api/admin/stats')).json(); setStats(s)
-    const f = await (await fetch('/api/admin/finance')).json(); setFin(f)
-  }
+  const [stats, setStats] = useState(null); const [fin, setFin] = useState(null); const [tab, setTab] = useState('finance'); const [txType, setTxType] = useState('stake_win'); const [txAmount, setTxAmount] = useState(''); const [txNote, setTxNote] = useState('')
+  const load = async () => { const s = await (await fetch('/api/admin/stats')).json(); setStats(s); const f = await (await fetch('/api/admin/finance')).json(); setFin(f) }
   useEffect(()=>{ load(); const i=setInterval(load, 5000); return ()=>clearInterval(i) },[])
   const ban = async (username) => { await fetch('/api/admin/ban',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); load() }
   const del = async (username) => { if(!confirm('Delete '+username+'?')) return; await fetch('/api/admin/delete-user',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({username})}); load() }
-  const addTx = async (e) => {
-    e.preventDefault(); if(!txAmount) return
-    await fetch('/api/admin/add-transaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type: txType, amount: Number(txAmount), note: txNote, username: user.username})})
-    setTxAmount(''); setTxNote(''); load()
-  }
+  const addTx = async (e) => { e.preventDefault(); if(!txAmount) return; await fetch('/api/admin/add-transaction',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({type: txType, amount: Number(txAmount), note: txNote, username: user.username})}); setTxAmount(''); setTxNote(''); load() }
   if (!stats || !fin) return <div style={{padding:20, color:'#fff'}}>Loading admin...</div>
   return (
     <div style={{padding:16, maxWidth:1000, margin:'0 auto', color:'#fff', background:'#0f172a', minHeight:'100vh'}}>
       <h1>🛡️ Admin Dashboard</h1>
       <p>Logged in as <b>{user.name} (@{user.username})</b> — {user.role} <button onClick={onLogout}>Logout</button> <button onClick={()=>window.location.reload()}>⬅️ Back to App</button></p>
-      <div style={{display:'flex', gap:12, margin:'16px 0', flexWrap:'wrap'}}>
-        <button onClick={()=>setTab('finance')}>💰 Cash Flow / Tax / Admin %</button>
-        <button onClick={()=>setTab('overview')}>Overview</button>
-        <button onClick={()=>setTab('users')}>Users ({stats.totalUsers})</button>
-        <button onClick={()=>setTab('tournaments')}>Tournaments ({stats.totalTournaments})</button>
-      </div>
-      {tab==='finance' && (
-        <div>
-          <h2>💰 Cash Flow — Admin % From Stake Won</h2>
-          <p style={{fontSize:13, opacity:0.7}}>Admin Fee: {Math.round(fin.adminFeeRate*100)}% of pot • Tax: {Math.round(fin.taxRate*100)}% on admin fee only</p>
-          <div style={{background:'#1e293b', padding:14, borderRadius:12, marginBottom:12, fontSize:14}}><b>Example:</b> 2 players stake K100 each = Pot K200 → Admin Fee K20 (10%) → Tax K3.20 → Winner gets K180 → Your Profit K16.80</div>
-          <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:12}}>
-            <div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>GROSS POTS</small><h2>K{fin.gross.toFixed(2)}</h2></div>
-            <div style={{background:'#581c87', padding:14, borderRadius:12, border:'2px solid #a855f7'}}><small>👑 ADMIN FEES</small><h2>K{fin.adminFees.toFixed(2)}</h2></div>
-            <div style={{background:'#7f1d1d', padding:14, borderRadius:12, border:'2px solid #ef4444'}}><small>🧾 TAX - LOCKED</small><h2>K{fin.taxReserve.toFixed(2)}</h2><p style={{fontSize:11}}>For ZRA. Do NOT spend.</p></div>
-            <div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>WINNERS PAID</small><h2>K{fin.payouts.toFixed(2)}</h2></div>
-            <div style={{background:'#14532d', padding:14, borderRadius:12, border:'2px solid #22c55e'}}><small>📈 NET PROFIT</small><h2>K{fin.profit.toFixed(2)}</h2></div>
-          </div>
-          <div style={{background:'#1e293b', padding:16, borderRadius:12, marginTop:16}}>
-            <h3>+ Record Stake Game / Transaction</h3>
-            <form onSubmit={addTx} style={{display:'flex', gap:8, flexWrap:'wrap'}}>
-              <select value={txType} onChange={e=>setTxType(e.target.value)} style={{padding:10, borderRadius:8}}>
-                <option value="stake_win">Stake Game Won - Amount = Total Pot (e.g. 200 for 2x100)</option>
-                <option value="entry_fee">Entry Fee (Taxed)</option>
-                <option value="payout">Manual Payout</option>
-              </select>
-              <input placeholder="Pot / Amount K e.g. 200" value={txAmount} onChange={e=>setTxAmount(e.target.value)} style={{padding:10, borderRadius:8}} />
-              <input placeholder="Note e.g. Themba won K100 stake" value={txNote} onChange={e=>setTxNote(e.target.value)} style={{padding:10, borderRadius:8, flex:1}} />
-              <button style={{padding:10, background:'#22c55e', border:0, borderRadius:8, fontWeight:700}}>Add</button>
-            </form>
-          </div>
-          <h3 style={{marginTop:20}}>📋 Ledger</h3>
-          <table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8, fontSize:13}}>
-            <thead><tr><th align="left">Date</th><th align="left">Type</th><th align="left">Note</th><th>Pot</th><th>Admin Fee</th><th>Tax</th><th>Winner Gets</th><th>Your Profit</th></tr></thead>
-            <tbody>{fin.transactions.map(t=>(
-              <tr key={t.id}><td>{new Date(t.date).toLocaleString()}</td><td>{t.type}</td><td>{t.note}</td><td>K{t.amount.toFixed(2)}</td><td style={{color:'#c084fc'}}>K{(t.adminFee||0).toFixed(2)}</td><td style={{color:'#f87171'}}>K{(t.tax||0).toFixed(2)}</td><td>K{(t.payout||0).toFixed(2)}</td><td style={{color:'#4ade80'}}>+K{(t.net||0).toFixed(2)}</td></tr>
-            ))}</tbody>
-          </table>
-        </div>
-      )}
-      {tab==='overview' && (
-        <div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12}}>
-          <div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalUsers}</h2><p>Total Users</p></div>
-          <div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.onlineUsers}</h2><p>Online Now</p></div>
-          <div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalTournaments}</h2><p>Tournaments</p></div>
-          <div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalGames}</h2><p>Games Started</p></div>
-        </div>
-      )}
-      {tab==='users' && (
-        <table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8}}>
-          <thead><tr><th align="left">User</th><th>Role</th><th>Rating</th><th>Games</th><th>Action</th></tr></thead>
-          <tbody>{stats.users.map(u=>(
-            <tr key={u.username}><td>{u.name}<br/><small>@{u.username} {u.banned?'🚫 BANNED':''}</small></td><td>{u.role}</td><td>{u.rating}</td><td>{u.games}</td>
-            <td><button onClick={()=>ban(u.username)}>{u.banned?'Unban':'Ban'}</button> <button onClick={()=>del(u.username)}>Delete</button></td></tr>
-          ))}</tbody>
-        </table>
-      )}
-      {tab==='tournaments' && stats.tournaments.map(t=>(
-        <div key={t.id} style={{background:'#1e293b', padding:12, borderRadius:12, marginBottom:8}}>
-          <b>{t.name}</b> — {t.playerCount}/{t.max} • Waiting: {t.waitingCount} • Stake: K{t.stake||0} • {t.format} • {t.timeControl} • {t.rated?'Rated':'Casual'}
-        </div>
-      ))}
+      <div style={{display:'flex', gap:12, margin:'16px 0', flexWrap:'wrap'}}><button onClick={()=>setTab('finance')}>💰 Cash Flow</button><button onClick={()=>setTab('overview')}>Overview</button><button onClick={()=>setTab('users')}>Users ({stats.totalUsers})</button><button onClick={()=>setTab('tournaments')}>Tournaments ({stats.totalTournaments})</button></div>
+      {tab==='finance' && (<div><h2>💰 Cash Flow — Admin % From Stake Won</h2><p style={{fontSize:13, opacity:0.7}}>Admin Fee: {Math.round(fin.adminFeeRate*100)}% of pot • Tax: {Math.round(fin.taxRate*100)}% on admin fee only</p><div style={{background:'#1e293b', padding:14, borderRadius:12, marginBottom:12, fontSize:14}}><b>Example:</b> 2 players stake K100 each = Pot K200 → Admin Fee K20 (10%) → Tax K3.20 → Winner gets K180 → Your Profit K16.80</div><div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr 1fr', gap:12}}><div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>GROSS POTS</small><h2>K{fin.gross.toFixed(2)}</h2></div><div style={{background:'#581c87', padding:14, borderRadius:12, border:'2px solid #a855f7'}}><small>👑 ADMIN FEES</small><h2>K{fin.adminFees.toFixed(2)}</h2></div><div style={{background:'#7f1d1d', padding:14, borderRadius:12, border:'2px solid #ef4444'}}><small>🧾 TAX - LOCKED</small><h2>K{fin.taxReserve.toFixed(2)}</h2><p style={{fontSize:11}}>For ZRA. Do NOT spend.</p></div><div style={{background:'#1e293b', padding:14, borderRadius:12}}><small>WINNERS PAID</small><h2>K{fin.payouts.toFixed(2)}</h2></div><div style={{background:'#14532d', padding:14, borderRadius:12, border:'2px solid #22c55e'}}><small>📈 NET PROFIT</small><h2>K{fin.profit.toFixed(2)}</h2></div></div><div style={{background:'#1e293b', padding:16, borderRadius:12, marginTop:16}}><h3>+ Record Transaction</h3><form onSubmit={addTx} style={{display:'flex', gap:8, flexWrap:'wrap'}}><select value={txType} onChange={e=>setTxType(e.target.value)} style={{padding:10, borderRadius:8}}><option value="stake_win">Stake Game Won - Amount = Total Pot</option><option value="entry_fee">Entry Fee</option><option value="payout">Manual Payout</option></select><input placeholder="Pot / Amount K e.g. 200" value={txAmount} onChange={e=>setTxAmount(e.target.value)} style={{padding:10, borderRadius:8}} /><input placeholder="Note" value={txNote} onChange={e=>setTxNote(e.target.value)} style={{padding:10, borderRadius:8, flex:1}} /><button style={{padding:10, background:'#22c55e', border:0, borderRadius:8, fontWeight:700}}>Add</button></form></div><h3 style={{marginTop:20}}>📋 Ledger</h3><table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8, fontSize:13}}><thead><tr><th align="left">Date</th><th align="left">Type</th><th align="left">Note</th><th>Pot</th><th>Admin Fee</th><th>Tax</th><th>Winner Gets</th><th>Profit</th></tr></thead><tbody>{fin.transactions.map(t=>(<tr key={t.id}><td>{new Date(t.date).toLocaleString()}</td><td>{t.type}</td><td>{t.note}</td><td>K{t.amount.toFixed(2)}</td><td style={{color:'#c084fc'}}>K{(t.adminFee||0).toFixed(2)}</td><td style={{color:'#f87171'}}>K{(t.tax||0).toFixed(2)}</td><td>K{(t.payout||0).toFixed(2)}</td><td style={{color:'#4ade80'}}>+K{(t.net||0).toFixed(2)}</td></tr>))}</tbody></table></div>)}
+      {tab==='overview' && (<div style={{display:'grid', gridTemplateColumns:'1fr 1fr 1fr 1fr', gap:12}}><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalUsers}</h2><p>Total Users</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.onlineUsers}</h2><p>Online Now</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalTournaments}</h2><p>Tournaments</p></div><div style={{background:'#1e293b', padding:16, borderRadius:12}}><h2>{stats.totalGames}</h2><p>Games Started</p></div></div>)}
+      {tab==='users' && (<table style={{width:'100%', background:'#1e293b', borderRadius:12, padding:8}}><thead><tr><th align="left">User</th><th>Role</th><th>Rating</th><th>Games</th><th>Action</th></tr></thead><tbody>{stats.users.map(u=>(<tr key={u.username}><td>{u.name}<br/><small>@{u.username} {u.banned?'🚫 BANNED':''}</small></td><td>{u.role}</td><td>{u.rating}</td><td>{u.games}</td><td><button onClick={()=>ban(u.username)}>{u.banned?'Unban':'Ban'}</button> <button onClick={()=>del(u.username)}>Delete</button></td></tr>))}</tbody></table>)}
+      {tab==='tournaments' && stats.tournaments.map(t=>(<div key={t.id} style={{background:'#1e293b', padding:12, borderRadius:12, marginBottom:8}}><b>{t.name}</b> — {t.playerCount}/{t.max} • Waiting: {t.waitingCount} • Stake: K{t.stake||0} • {t.format} • {t.timeControl} • {t.rated?'Rated':'Casual'}</div>))}
     </div>
   )
 }
-
 export default function App() {
   const [user, setUser] = useState(() => { try { return JSON.parse(localStorage.getItem('zed_user')) } catch { return null } })
-  const [showAdmin, setShowAdmin] = useState(false)
-  const [page, setPage] = useState('home')
-  const [tournaments, setTournaments] = useState([])
-  const [lobbyUsers, setLobbyUsers] = useState([])
-  const [status, setStatus] = useState('')
-  const [room, setRoom] = useState('')
-  const [opponent, setOpponent] = useState('')
-  const [stats, setStats] = useState(null)
-  const [balance, setBalance] = useState(() => Number(localStorage.getItem('zed_balance') || 1000))
-  const [showBalance, setShowBalance] = useState(() => localStorage.getItem('zed_show_balance') !== 'hide')
+  const [showAdmin, setShowAdmin] = useState(false); const [page, setPage] = useState('home'); const [tournaments, setTournaments] = useState([]); const [lobbyUsers, setLobbyUsers] = useState([]); const [status, setStatus] = useState(''); const [room, setRoom] = useState(''); const [opponent, setOpponent] = useState(''); const [stats, setStats] = useState(null)
+  const [balance, setBalance] = useState(() => Number(localStorage.getItem('zed_balance') || 1000)); const [showBalance, setShowBalance] = useState(() => localStorage.getItem('zed_show_balance') !== 'hide')
+  const [arenaScore, setArenaScore] = useState(0); const [streak, setStreak] = useState(0); const [gamesPlayed, setGamesPlayed] = useState(0); const [countdown, setCountdown] = useState(0); const [autoPlay, setAutoPlay] = useState(true); const [currentArena, setCurrentArena] = useState('MEGA1')
   const toggleBalance = () => { const next = !showBalance; setShowBalance(next); localStorage.setItem('zed_show_balance', next ? 'show' : 'hide') }
   const addBalance = (amount) => { const next = balance + amount; setBalance(next); localStorage.setItem('zed_balance', String(next)) }
   const wsRef = useRef(null)
   const loadTournaments = async () => { try { const r = await fetch('/api/tournaments'); const d = await r.json(); setTournaments(d.tournaments || []) } catch {} }
   const loadStats = async () => { try { const r = await fetch('/api/admin/stats'); const d = await r.json(); setStats(d) } catch {} }
+  const finishGame = (result) => {
+    setGamesPlayed(g=>g+1)
+    if (result==='win') { setArenaScore(s=>s + (streak>=1 ? 4 : 2)); setStreak(s=>s+1); setStatus(`🏆 You won! +${streak>=1 ? 4 : 2} pts ${streak>=1 ? '🔥 STREAK!' : ''}`) }
+    else if (result==='draw') { setArenaScore(s=>s+1); setStreak(0); setStatus('🤝 Draw! +1 pt') }
+    else { setStreak(0); setStatus('😔 Lost. +0 pts') }
+    wsRef.current?.send(JSON.stringify({ type: 'game-finished', tournamentId: currentArena }))
+    if (autoPlay) {
+      setCountdown(3)
+      let c = 3
+      const iv = setInterval(()=>{ c--; setCountdown(c); if(c<=0){ clearInterval(iv); setStatus('🔍 Finding next opponent...'); wsRef.current?.send(JSON.stringify({ type: 'game-finished', tournamentId: currentArena })); } }, 1000)
+    }
+  }
   useEffect(() => {
     if (!user) return
     loadTournaments(); loadStats()
@@ -121,8 +54,8 @@ export default function App() {
     ws.onmessage = (e) => {
       const m = JSON.parse(e.data)
       if (m.type === 'lobby') { setTournaments(m.tournaments || []); setLobbyUsers(m.users || []) }
-      if (m.type === 'waiting-for-opponent') setStatus('🔍 ' + m.message)
-      if (m.type === 'game-start') { setStatus(`🎉 Opponent found! vs ${m.opponent} — You are ${m.color === 'w' ? 'White' : 'Black'} — Room: ${m.room}`); setRoom(m.room); setOpponent(m.opponent); setPage('play') }
+      if (m.type === 'waiting-for-opponent') setStatus('🔍 ' + m.message + ' — Stay here, next game auto-starts')
+      if (m.type === 'game-start') { setCountdown(0); setStatus(`🎉 Opponent found! vs ${m.opponent} — You are ${m.color === 'w' ? 'White' : 'Black'} — Room: ${m.room} — Game ${gamesPlayed+1} • Score: ${arenaScore} pts`); setRoom(m.room); setOpponent(m.opponent); setPage('play') }
       if (m.type === 'tournament-started') { setStatus('🏆 Tournament Started! Room: ' + m.room); setRoom(m.room); setPage('play') }
       if (m.type === 'stake-settled') { setStatus(`💰 Stake settled! Winner: ${m.winner} got K${m.winnerPayout} — Admin Fee K${m.adminFee} — Tax K${m.tax}`); if (m.winner === user.name) addBalance(m.winnerPayout) }
     }
@@ -130,66 +63,103 @@ export default function App() {
   }, )
   if (!user) return <Auth onLogin={setUser} />
   if (showAdmin && user.role === 'admin') return <AdminDashboard user={user} onLogout={() => { localStorage.removeItem('zed_user'); setUser(null); setShowAdmin(false) }} />
-  const joinTournament = (id) => { setStatus('Joining...'); wsRef.current?.send(JSON.stringify({ type: 'join-tournament', tournamentId: id })) }
-  const createTournament = () => { const name = prompt('Tournament name? e.g. My Blitz Arena'); if (!name) return; wsRef.current?.send(JSON.stringify({ type: 'create-rated-tournament', name, format: 'arena', timeControl: 'blitz', rated: true, max: 16 })); setStatus('✅ Tournament created!') }
+  const joinTournament = (id) => { setCurrentArena(id); setStatus('Joining Endless Arena...'); wsRef.current?.send(JSON.stringify({ type: 'join-tournament', tournamentId: id })) }
+  const createTournament = () => { const name = prompt('Tournament name?'); if (!name) return; wsRef.current?.send(JSON.stringify({ type: 'create-rated-tournament', name, format: 'arena', timeControl: 'blitz', rated: true, max: 16 })); setStatus('✅ Tournament created!') }
   const logout = () => { localStorage.removeItem('zed_user'); setUser(null) }
   const btn = (active) => ({ padding: '10px 16px', border: 0, borderRadius: 10, fontWeight: 700, cursor: 'pointer', background: active ? '#22c55e' : '#1e293b', color: '#fff' })
   const card = { background: '#1e293b', padding: 16, borderRadius: 14, marginBottom: 12 }
   return (
     <div style={{ background: '#0f172a', color: '#fff', minHeight: '100vh', padding: 16, paddingTop: 70, maxWidth: 1000, margin: '0 auto', position: 'relative' }}>
-      <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 999, display: 'flex', gap: 6, alignItems: 'center', background: '#1e293b', padding: '8px 10px', borderRadius: 12, border: '2px solid #eab308', boxShadow: '0 4px 20px rgba(0,0,0,0.5)' }}>
-        <span style={{ fontSize: 14 }}>💰</span>
-        <span style={{ fontWeight: 800, fontSize: 15 }}>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</span>
-        <button onClick={toggleBalance} style={{ background: '#0f172a', color: '#fff', border: 0, borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontSize: 16 }}>{showBalance ? '👁️' : '🙈'}</button>
-        <button onClick={() => { const a = prompt('Add funds K? e.g. 100'); if (a) addBalance(Number(a)) }} style={{ background: '#22c55e', color: '#fff', border: 0, borderRadius: 8, padding: '6px 10px', cursor: 'pointer', fontWeight: 700 }}>+</button>
+      <div style={{ position: 'fixed', top: 12, right: 12, zIndex: 999, display: 'flex', gap: 6, alignItems: 'center', background: '#1e293b', padding: '8px 10px', borderRadius: 12, border: '2px solid #eab308' }}>
+        <span>💰</span><span style={{fontWeight:800}}>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</span><button onClick={toggleBalance} style={{background:'#0f172a', color:'#fff', border:0, borderRadius:8, padding:'6px 10px', cursor:'pointer'}}>{showBalance ? '👁️' : '🙈'}</button><button onClick={() => { const a = prompt('Add funds K?'); if (a) addBalance(Number(a)) }} style={{background:'#22c55e', color:'#fff', border:0, borderRadius:8, padding:'6px 10px', cursor:'pointer', fontWeight:700}}>+</button>
       </div>
-      <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap', alignItems: 'center', marginBottom: 16 }}>
-        <h1 style={{ margin: 0, marginRight: 8 }}>♔ Zed Gambit</h1>
-        <button style={btn(page === 'home')} onClick={() => setPage('home')}>🏠 Home</button>
-        <button style={btn(page === 'play')} onClick={() => setPage('play')}>♟️ Play Now</button>
-        <button style={btn(page === 'tournaments')} onClick={() => setPage('tournaments')}>🏆 Rated Tournaments</button>
-        <button style={btn(page === 'stake')} onClick={() => setPage('stake')}>💰 Stake Games</button>
-        <button style={btn(page === 'leaderboard')} onClick={() => setPage('leaderboard')}>📊 Leaderboard</button>
-        {user.role === 'admin' && <button style={{ ...btn(false), background: '#a855f7' }} onClick={() => setShowAdmin(true)}>🛡️ Admin</button>}
-        <button style={{ ...btn(false), background: '#ef4444' }} onClick={logout}>🚪 Logout</button>
+      <div style={{display:'flex', gap:8, flexWrap:'wrap', alignItems:'center', marginBottom:16}}>
+        <h1 style={{margin:0, marginRight:8}}>♔ Zed Gambit</h1>
+        <button style={btn(page==='home')} onClick={()=>setPage('home')}>🏠 Home</button><button style={btn(page==='play')} onClick={()=>setPage('play')}>♟️ Play Now</button><button style={btn(page==='tournaments')} onClick={()=>setPage('tournaments')}>🏆 Arenas</button><button style={btn(page==='stake')} onClick={()=>setPage('stake')}>💰 Stake Games</button><button style={btn(page==='leaderboard')} onClick={()=>setPage('leaderboard')}>📊 Leaderboard</button>
+        {user.role==='admin' && <button style={{...btn(false), background:'#a855f7'}} onClick={()=>setShowAdmin(true)}>🛡️ Admin</button>}<button style={{...btn(false), background:'#ef4444'}} onClick={logout}>🚪 Logout</button>
       </div>
-      <div style={{ background: '#1e293b', padding: 12, borderRadius: 10, marginBottom: 16, fontSize: 14 }}>
-        👤 <b>{user.name}</b> (@{user.username}) • Rating: <b>{user.rating}</b> • Role: <b>{user.role}</b> • Online: {lobbyUsers.length} players
-        <br />💰 Balance: <b>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</b> <button onClick={toggleBalance} style={{ background: 'transparent', border: 0, cursor: 'pointer', fontSize: 14 }}>{showBalance ? '👁️ Hide' : '🙈 Show'}</button>
-        {status && <div style={{ marginTop: 6 }}>📢 {status}</div>}
-        {room && <div style={{ marginTop: 6 }}>🎲 Current Room: <b>{room}</b> {opponent && <>vs {opponent}</>}</div>}
-      </div>
-      {page === 'home' && (
-        <div>
-          <h2>Welcome to Zed Gambit 🇿🇲</h2>
-          <p>Join an Arena and start playing rated games instantly — like lichess / chess.com</p>
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-            <button style={{ ...btn(false), padding: 20, fontSize: 18, background: '#22c55e' }} onClick={() => setPage('tournaments')}>🏆 Join Rated Arena</button>
-            <button style={{ ...btn(false), padding: 20, fontSize: 18, background: '#eab308', color: '#000' }} onClick={() => setPage('stake')}>💰 Play Stake Game</button>
-            <button style={{ ...btn(false), padding: 20, fontSize: 18 }} onClick={() => setPage('play')}>♟️ Quick Play</button>
-            <button style={{ ...btn(false), padding: 20, fontSize: 18 }} onClick={() => setPage('leaderboard')}>📊 View Leaderboard</button>
-          </div>
-          <h3 style={{ marginTop: 20 }}>🔥 Live Arenas Right Now</h3>
-          {tournaments.map(t => (
-            <div key={t.id} style={card}><b>{t.name}</b> — {t.playerCount}/{t.max} • Waiting: {t.waitingCount} • {t.timeControl} • {t.rated ? 'Rated' : 'Casual'} {t.stake ? `• Stake K${t.stake}` : ''}<br /><button style={{ ...btn(true), marginTop: 8 }} onClick={() => joinTournament(t.id)}>✅ Join & Play</button></div>
-          ))}
-        </div>
-      )}
-      {page === 'play' && (
-        <div style={card}><h2>♟️ Play Now</h2>{room ? (<div><p>Your game room is <b>{room}</b>.</p><button style={btn(true)} onClick={() => { wsRef.current?.send(JSON.stringify({ type: 'game-finished', tournamentId: tournaments[0]?.id })); setStatus('Game finished! Searching for next opponent...') }}>🏁 Finish Game & Find Next Opponent</button></div>) : (<div><p>No game yet. Join an arena to get paired instantly.</p><button style={btn(true)} onClick={() => joinTournament('MEGA1')}>🌍 Join Mega Arena - Everyone Can Join</button></div>)}<div style={{ marginTop: 16 }}><button style={btn(false)} onClick={() => { const r = prompt('Enter Room Code:'); if (r) setRoom(r) }}>🔑 Join by Room Code</button><button style={{ ...btn(false), marginLeft: 8 }} onClick={() => { const r = Math.random().toString(36).slice(2, 8).toUpperCase(); setRoom(r); setStatus('Room created: ' + r) }}>➕ Create Private Room</button></div></div>
-      )}
-      {page === 'tournaments' && (
-        <div><h2>🏆 Rated Tournaments</h2><button style={{ ...btn(true), marginBottom: 12 }} onClick={createTournament}>➕ Create Tournament</button><button style={{ ...btn(false), marginLeft: 8, marginBottom: 12 }} onClick={loadTournaments}>🔄 Refresh List</button>{tournaments.map(t => (<div key={t.id} style={card}><b>{t.name}</b><br /><small>{t.format} • {t.timeControl} • {t.rated ? 'Rated ⭐' : 'Casual'} • {t.playerCount}/{t.max} joined • {t.waitingCount} waiting • Avg Rating {t.avgRating}</small><br /><div style={{ marginTop: 8, display: 'flex', gap: 8, flexWrap: 'wrap' }}><button style={btn(true)} onClick={() => joinTournament(t.id)}>✅ Join Arena</button><button style={btn(false)} onClick={() => { setStatus('Players: ' + (t.players || []).join(', ')) }}>👥 View Players</button></div></div>))}</div>
-      )}
-      {page === 'stake' && (
-        <div><h2>💰 Stake Games — Winner Takes Pot Minus 10% Admin Fee</h2><p style={{ fontSize: 13 }}>Example: 2 x K100 = Pot K200 → Admin K20 → Tax K3.20 → Winner gets K180</p><p style={{ fontSize: 13 }}>Your Balance: <b>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</b></p>{tournaments.filter(t => (t.stake || 0) > 0).map(t => (<div key={t.id} style={card}><b>{t.name}</b> — Stake K{t.stake} • {t.playerCount}/{t.max} • Waiting: {t.waitingCount}<br /><button style={{ ...btn(false), background: '#eab308', color: '#000', marginTop: 8 }} onClick={() => { if (balance < t.stake) { alert('Not enough balance! Top up with + button top right.'); return } addBalance(-t.stake); joinTournament(t.id) }}>💰 Join Stake K{t.stake}</button></div>))}<div style={card}><h3>➕ Create Custom Stake Game</h3><button style={btn(false)} onClick={() => { const s = prompt('Stake amount K? e.g. 50'); if (s) { wsRef.current?.send(JSON.stringify({ type: 'create-rated-tournament', name: `💰 Stake K${s} Arena`, format: 'arena', timeControl: 'blitz', rated: true, stake: Number(s), max: 16 })); setStatus('Stake game created!') } }}>➕ Create Stake Arena</button></div></div>
-      )}
-      {page === 'leaderboard' && (
-        <div><h2>📊 Leaderboard</h2><button style={btn(false)} onClick={loadStats}>🔄 Refresh</button>{stats?.users?.sort((a, b) => b.rating - a.rating).map((u, i) => (<div key={u.username} style={card}>#{i + 1} <b>{u.name}</b> (@{u.username}) — Rating {u.rating} • Games {u.games} • Wins {u.wins} {u.role === 'admin' ? '🛡️' : ''}</div>))}</div>
-      )}
-      <p style={{ fontSize: 12, opacity: 0.6, textAlign: 'center', marginTop: 20 }}>Zed Gambit • Rated • Stake • Admin Fee 10% • Tax 16% VAT • Made in Zambia 🇿🇲</p>
+      <div style={{background:'#1e293b', padding:12, borderRadius:10, marginBottom:16, fontSize:14}}>👤 <b>{user.name}</b> (@{user.username}) • Rating: <b>{user.rating}</b> • Online: {lobbyUsers.length} players<br/>💰 Balance: <b>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</b> <button onClick={toggleBalance} style={{background:'transparent', border:0, cursor:'pointer'}}>{showBalance ? '👁️ Hide' : '🙈 Show'}</button><br/>🔥 Endless Arena: <b>{arenaScore} pts</b> • {gamesPlayed} games • Streak: {streak} {streak>=2 ? '🔥🔥' : ''} • Auto-Next: {autoPlay ? 'ON ✅' : 'OFF'} <button onClick={()=>setAutoPlay(!autoPlay)} style={{background:'#0f172a', color:'#fff', border:0, borderRadius:6, padding:'2px 8px', cursor:'pointer'}}>{autoPlay ? 'Turn OFF' : 'Turn ON'}</button>{status && <div style={{marginTop:6}}>📢 {status}</div>}{countdown>0 && <div style={{marginTop:6, fontSize:18, fontWeight:800, color:'#22c55e'}}>⏳ Next game in {countdown}... Stay here!</div>}{room && <div style={{marginTop:6}}>🎲 Room: <b>{room}</b> {opponent && <>vs {opponent}</>}</div>}</div>
+      {page==='home' && (<div><h2>Welcome to Zed Gambit 🇿🇲</h2><p>Join an Endless Arena — finish a game, next game auto-starts. Never stops.</p><div style={{display:'grid', gridTemplateColumns:'1fr 1fr', gap:12}}><button style={{...btn(false), padding:20, fontSize:18, background:'#22c55e'}} onClick={()=>setPage('tournaments')}>🏆 Join Endless Arena</button><button style={{...btn(false), padding:20, fontSize:18, background:'#eab308', color:'#000'}} onClick={()=>setPage('stake')}>💰 Play Stake Game</button><button style={{...btn(false), padding:20, fontSize:18}} onClick={()=>setPage('play')}>♟️ Quick Play</button><button style={{...btn(false), padding:20, fontSize:18}} onClick={()=>setPage('leaderboard')}>📊 Leaderboard</button></div><h3 style={{marginTop:20}}>🔥 Live Endless Arenas</h3>{tournaments.map(t=>(<div key={t.id} style={card}><b>{t.name}</b> — {t.playerCount}/{t.max} • Waiting: {t.waitingCount} • {t.timeControl} • {t.rated?'Rated':'Casual'} {t.stake ? `• Stake K${t.stake}` : ''}<br/><button style={{...btn(true), marginTop:8}} onClick={()=>joinTournament(t.id)}>✅ Join & Play Endless</button></div>))}</div>)}
+      {page==='play' && (<div style={card}><h2>♟️ Play Now — Endless Mode</h2>{room ? (<div><p>Your game room is <b>{room}</b> vs <b>{opponent}</b></p><p>Score: {arenaScore} pts • Streak: {streak}</p><div style={{display:'flex', gap:8, flexWrap:'wrap'}}><button style={{...btn(true)}} onClick={()=>finishGame('win')}>🏆 I Won</button><button style={btn(false)} onClick={()=>finishGame('draw')}>🤝 Draw</button><button style={{...btn(false), background:'#ef4444'}} onClick={()=>finishGame('loss')}>😔 I Lost</button></div>{countdown>0 && <p style={{fontSize:20, fontWeight:800, color:'#22c55e'}}>Next game in {countdown}...</p>}<p style={{fontSize:12, opacity:0.7}}>After you tap result, next opponent is found automatically. No need to tap Join again.</p></div>) : (<div><p>No game yet. Join an arena to get paired instantly.</p><button style={btn(true)} onClick={()=>joinTournament('MEGA1')}>🌍 Join Mega Endless Arena</button></div>)}<div style={{marginTop:16}}><button style={btn(false)} onClick={()=>{const r=prompt('Enter Room Code:'); if(r) setRoom(r)}}>🔑 Join by Room Code</button><button style={{...btn(false), marginLeft:8}} onClick={()=>{const r=Math.random().toString(36).slice(2,8).toUpperCase(); setRoom(r); setStatus('Room created: '+r)}}>➕ Create Private Room</button></div></div>)}
+      {page==='tournaments' && (<div><h2>🏆 Endless Arenas — Never Ends</h2><button style={{...btn(true), marginBottom:12}} onClick={createTournament}>➕ Create Arena</button><button style={{...btn(false), marginLeft:8, marginBottom:12}} onClick={loadTournaments}>🔄 Refresh</button>{tournaments.map(t=>(<div key={t.id} style={card}><b>{t.name}</b><br/><small>{t.format} • {t.timeControl} • {t.rated?'Rated ⭐':'Casual'} • {t.playerCount}/{t.max} • {t.waitingCount} waiting • Avg {t.avgRating}</small><br/><button style={{...btn(true), marginTop:8}} onClick={()=>joinTournament(t.id)}>✅ Join Endless</button></div>))}</div>)}
+      {page==='stake' && (<div><h2>💰 Stake Games — Winner Takes Pot Minus 10%</h2><p style={{fontSize:13}}>Your Balance: <b>{showBalance ? `K${balance.toFixed(2)}` : 'K****'}</b></p>{tournaments.filter(t=>(t.stake||0)>0).map(t=>(<div key={t.id} style={card}><b>{t.name}</b> — Stake K{t.stake} • {t.playerCount}/{t.max} • Waiting: {t.waitingCount}<br/><button style={{...btn(false), background:'#eab308', color:'#000', marginTop:8}} onClick={()=>{if(balance<t.stake){alert('Not enough balance! Top up with + button.'); return} addBalance(-t.stake); joinTournament(t.id)}}>💰 Join Stake K{t.stake}</button></div>))}</div>)}
+      {page==='leaderboard' && (<div><h2>📊 Leaderboard</h2><button style={btn(false)} onClick={loadStats}>🔄 Refresh</button>{stats?.users?.sort((a,b)=>b.rating-a.rating).map((u,i)=>(<div key={u.username} style={card}>#{i+1} <b>{u.name}</b> (@{u.username}) — Rating {u.rating} • Games {u.games} • Wins {u.wins} {u.role==='admin' ? '🛡️' : ''}</div>))}<div style={card}><b>Your Endless Arena Today:</b> {arenaScore} pts • {gamesPlayed} games • Streak {streak}</div></div>)}
+      <p style={{fontSize:12, opacity:0.6, textAlign:'center', marginTop:20}}>Zed Gambit • Endless Arena • Rated • Stake • Admin Fee 10% • Tax 16% VAT • Made in Zambia 🇿🇲</p>
     </div>
   )
 }
+
+
+2. Delete ALL in worker.mjs — Paste ONLY this:
+
+js
+// Zed Gambit - Endless Arena Worker
+import { DurableObject } from "cloudflare:workers";
+function calcElo(rA, rB, score, gamesPlayed) { const K = gamesPlayed < 30 ? 32 : 20; const expected = 1 / (1 + Math.pow(10, (rB - rA) / 400)); return Math.round(rA + K * (score - expected)) }
+function hashPass(p) { let h = 0; for (let i=0;i<p.length;i++){ h = ((h<<5)-h)+p.charCodeAt(i); h=h&h; } return 'h'+Math.abs(h).toString(36)+p.length; }
+const TAX_RATE = 0.16; const ADMIN_FEE = 0.10;
+function seedTournaments() { return new Map([
+  ['ARENA1', { id: 'ARENA1', name: '🔥 Endless Arena - Blitz', format: 'arena', timeControl: 'blitz', stake: 0, rated: true, max: 100, status: 'waiting', players: [], waiting: [], round: 1 }],
+  ['RAPID1', { id: 'RAPID1', name: '⚡ Endless Arena - Rapid', format: 'arena', timeControl: 'rapid', stake: 0, rated: true, max: 100, status: 'waiting', players: [], waiting: [], round: 1 }],
+  ['BULLET1', { id: 'BULLET1', name: '💎 Endless Arena - Bullet', format: 'arena', timeControl: 'bullet', stake: 0, rated: true, max: 100, status: 'waiting', players: [], waiting: [], round: 1 }],
+  ['MEGA1', { id: 'MEGA1', name: '🌍 Mega Endless Arena - Everyone Can Join', format: 'arena', timeControl: 'blitz', stake: 0, rated: true, max: 200, status: 'waiting', players: [], waiting: [], round: 1 }],
+  ['STAKE1', { id: 'STAKE1', name: '💰 Endless Stake - K50', format: 'arena', timeControl: 'blitz', stake: 50, rated: true, max: 100, status: 'waiting', players: [], waiting: [], round: 1 }],
+  ['STAKE2', { id: 'STAKE2', name: '💰 Endless Stake - K100', format: 'arena', timeControl: 'blitz', stake: 100, rated: true, max: 100, status: 'waiting', players: [], waiting: [], round: 1 }],
+]) }
+export class ChessRoom extends DurableObject {
+  constructor(ctx, env) { super(ctx, env); this.ctx = ctx; this.env = env; this.sockets = new Set(); this.fen = 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1'; this.players = []; }
+  async fetch(request) {
+    const pair = new WebSocketPair(); const [client, server] = Object.values(pair); server.accept(); this.sockets.add(server);
+    const url = new URL(request.url); const room = url.searchParams.get('room') || 'default'; const color = this.players.length === 0 ? 'w' : 'b';
+    if (this.players.length < 2) this.players.push(server);
+    server.send(JSON.stringify({ type: 'assign', color, fen: this.fen, players: this.players.length, room }));
+    server.addEventListener('message', (e) => { const m = JSON.parse(e.data); if (m.type === 'move') { this.fen = m.fen; for (const s of this.sockets) { if (s !== server) { try { s.send(JSON.stringify({ type: 'move', fen: m.fen, from: m.from, to: m.to })) } catch {} } } } if (m.type === 'game-over' && m.rated) { const wScore = m.winner === 'draw' ? 0.5 : (m.winner === 'w' ? 1 : 0); const bScore = 1 - wScore; const newW = calcElo(m.whiteRating, m.blackRating, wScore, m.whiteGames || 0); const newB = calcElo(m.blackRating, m.whiteRating, bScore, m.blackGames || 0); for (const s of this.sockets) { try { s.send(JSON.stringify({ type: 'rating-update', whiteNew: newW, blackNew: newB })) } catch {} } } });
+    server.addEventListener('close', () => { this.sockets.delete(server); this.players = this.players.filter(p => p !== server); });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+}
+export class Lobby extends DurableObject {
+  constructor(ctx, env) { super(ctx, env); this.ctx = ctx; this.env = env; this.users = new Map(); this.tournaments = seedTournaments(); this.authUsers = new Map([['admin', { username: 'admin', name: 'Admin', password: hashPass('ZedAdmin2026!'), role: 'admin', rating: 1500, games: 0, wins: 0, created: new Date().toISOString(), banned: false }]]); this.totalGames = 0; this.finance = { gross: 0, taxReserve: 0, adminFees: 0, payouts: 0, profit: 0, transactions: [] }; this.addTransaction('stake_win', 200, 'Demo: K100 Stake Game - Pot K200 (2 x K100)', 'Themba'); }
+  addTransaction(type, amount, note, username) { let tax = 0, adminFee = 0, net = 0, payout = 0; if (type === 'stake_win') { adminFee = Math.round(amount * ADMIN_FEE * 100) / 100; tax = Math.round(adminFee * TAX_RATE * 100) / 100; payout = Math.round((amount - adminFee) * 100) / 100; net = Math.round((adminFee - tax) * 100) / 100; this.finance.gross += amount; this.finance.adminFees += adminFee; this.finance.taxReserve += tax; this.finance.payouts += payout; this.finance.profit += net; } else if (type === 'payout') { payout = amount; this.finance.payouts += amount; this.finance.profit -= amount; net = -amount; } else if (type === 'entry_fee' || type === 'stake' || type === 'subscription') { adminFee = amount; tax = Math.round(amount * TAX_RATE * 100) / 100; net = Math.round((amount - tax) * 100) / 100; this.finance.gross += amount; this.finance.adminFees += adminFee; this.finance.taxReserve += tax; this.finance.profit += net; } else { this.finance.gross += amount; net = amount; this.finance.profit += net; } const tx = { id: Date.now().toString(36) + Math.random().toString(36).slice(2,4), type, amount, adminFee, tax, payout, net, note, username: username || 'system', date: new Date().toISOString() }; this.finance.transactions.unshift(tx); if (this.finance.transactions.length > 200) this.finance.transactions = this.finance.transactions.slice(0,200); return tx; }
+  tryPair(t) {
+    if (!t.waiting) t.waiting = []
+    t.waiting = t.waiting.filter(id => this.users.get(id))
+    while (t.waiting.length >= 2) {
+      const id1 = t.waiting.shift(); const id2 = t.waiting.shift()
+      const u1 = this.users.get(id1); const u2 = this.users.get(id2)
+      if (!u1 || !u2) continue
+      const room = Math.random().toString(36).slice(2, 8).toUpperCase()
+      u1.ws.send(JSON.stringify({ type: 'game-start', tournamentId: t.id, room, format: t.format, timeControl: t.timeControl, rated: t.rated, stake: t.stake, opponent: u2.name, opponentRating: u2.rating, color: 'w', message: 'Opponent found!' }))
+      u2.ws.send(JSON.stringify({ type: 'game-start', tournamentId: t.id, room, format: t.format, timeControl: t.timeControl, rated: t.rated, stake: t.stake, opponent: u1.name, opponentRating: u1.rating, color: 'b', message: 'Opponent found!' }))
+      this.totalGames++
+    }
+  }
+  async fetch(request) {
+    const url = new URL(request.url); const json = (obj, status=200) => new Response(JSON.stringify(obj), { status, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } });
+    if (url.pathname === '/api/auth/register' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const username = (b.username||'').toLowerCase().trim(); const name = (b.name||username).trim(); const password = b.password||''; if (!username || password.length < 4) return json({ error: 'Username + password (min 4 chars) required' }, 400); if (this.authUsers.has(username)) return json({ error: 'Username already taken' }, 400); const user = { username, name, password: hashPass(password), role: 'user', rating: 1200, games: 0, wins: 0, created: new Date().toISOString(), banned: false }; this.authUsers.set(username, user); return json({ ok: true, user: { username, name, role: 'user', rating: 1200 }, token: 'tok_'+username }); }
+    if (url.pathname === '/api/auth/login' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const username = (b.username||'').toLowerCase().trim(); const user = this.authUsers.get(username); if (!user || user.password !== hashPass(b.password||'')) return json({ error: 'Wrong username or password' }, 401); if (user.banned) return json({ error: 'Account banned by admin' }, 403); return json({ ok: true, user: { username: user.username, name: user.name, role: user.role, rating: user.rating, games: user.games, wins: user.wins }, token: 'tok_'+username }); }
+    if (url.pathname === '/api/admin/finance') { return json({ taxRate: TAX_RATE, adminFeeRate: ADMIN_FEE, gross: this.finance.gross, taxReserve: this.finance.taxReserve, adminFees: this.finance.adminFees, payouts: this.finance.payouts, profit: this.finance.profit, availableToWithdraw: Math.round(this.finance.profit*100)/100, transactions: this.finance.transactions }); }
+    if (url.pathname === '/api/admin/add-transaction' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const tx = this.addTransaction(b.type || 'entry_fee', Number(b.amount)||0, b.note || '', b.username || ''); return json({ ok: true, tx }); }
+    if (url.pathname === '/api/admin/settle-stake' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const pot = Number(b.pot)||0; const winner = b.winner || 'Winner'; const tx = this.addTransaction('stake_win', pot, `Stake game settled - Winner: ${winner} - Pot K${pot}`, winner); return json({ ok: true, tx, winnerPayout: tx.payout, adminFee: tx.adminFee, tax: tx.tax, profit: tx.net }); }
+    if (url.pathname === '/api/admin/stats') { const users = [...this.authUsers.values()].map(u=>({ username: u.username, name: u.name, role: u.role, rating: u.rating, games: u.games, wins: u.wins, created: u.created, banned: u.banned })); const tournaments = [...this.tournaments.values()].map(t=>({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, rated: t.rated, max: t.max, status: t.status, playerCount: t.players.length, waitingCount: (t.waiting||[]).length, stake: t.stake })); return json({ totalUsers: users.length, onlineUsers: this.users.size, totalTournaments: tournaments.length, totalGames: this.totalGames, finance: { gross: this.finance.gross, taxReserve: this.finance.taxReserve, adminFees: this.finance.adminFees, payouts: this.finance.payouts, profit: this.finance.profit }, users, tournaments }); }
+    if (url.pathname === '/api/admin/ban' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const u = this.authUsers.get((b.username||'').toLowerCase()); if (u && u.role !== 'admin') { u.banned = !u.banned; return json({ ok: true, banned: u.banned }); } return json({ error: 'Cannot ban admin' }, 400); }
+    if (url.pathname === '/api/admin/delete-user' && request.method === 'POST') { const b = await request.json().catch(()=>({})); const key = (b.username||'').toLowerCase(); if (key !== 'admin' && this.authUsers.has(key)) { this.authUsers.delete(key); return json({ ok: true }); } return json({ error: 'Cannot delete admin' }, 400); }
+    if (url.pathname === '/api/tournaments') { const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, waitingCount: (t.waiting || []).length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 })); return json({ tournaments }); }
+    const pair = new WebSocketPair(); const [client, server] = Object.values(pair); server.accept(); let myId = Math.random().toString(36).slice(2, 8).toUpperCase(); server.send(JSON.stringify({ type: 'welcome', id: myId }));
+    const broadcastLobby = () => { const users = [...this.users.values()].map(u => ({ id: u.id, name: u.name, rating: u.rating })); const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, waitingCount: (t.waiting||[]).length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 })); for (const u of this.users.values()) { try { u.ws.send(JSON.stringify({ type: 'lobby', users, tournaments })) } catch {} } };
+    setTimeout(() => { const tournaments = [...this.tournaments.values()].map(t => ({ id: t.id, name: t.name, format: t.format, timeControl: t.timeControl, stake: t.stake, rated: t.rated, max: t.max, status: t.status, players: t.players.map(p => p.name), playerCount: t.players.length, waitingCount: (t.waiting||[]).length, avgRating: t.players.length ? Math.round(t.players.reduce((a,p)=>a+p.rating,0)/t.players.length) : 1200 })); try { server.send(JSON.stringify({ type: 'lobby', users: [...this.users.values()].map(u => ({ id: u.id, name: u.name, rating: u.rating })), tournaments })) } catch {} }, 100);
+    server.addEventListener('message', (e) => {
+      const m = JSON.parse(e.data);
+      if (m.type === 'join-lobby') { this.users.set(myId, { id: myId, name: m.name || 'Player', rating: m.rating || 1200, ws: server }); broadcastLobby(); }
+      if (m.type === 'create-rated-tournament') { const id = Math.random().toString(36).slice(2, 6).toUpperCase(); const me = this.users.get(myId); this.tournaments.set(id, { id, name: m.name, format: m.format || 'arena', timeControl: m.timeControl || 'blitz', stake: m.stake || 0, rated: m.rated !== false, max: m.max || 16, status: 'waiting', players: me ? [{ id: myId, name: me.name, rating: me.rating }] : [], waiting: [], round: 1 }); broadcastLobby(); }
+      if (m.type === 'join-tournament') { const t = this.tournaments.get(m.tournamentId); const me = this.users.get(myId); if (t && me) { if (!t.players.find(p => p.id === myId)) t.players.push({ id: myId, name: me.name, rating: me.rating }); if (!t.waiting) t.waiting = []; if (!t.waiting.includes(myId)) t.waiting.push(myId); const meUser = this.users.get(myId); if (meUser) meUser.ws.send(JSON.stringify({ type: 'waiting-for-opponent', tournamentId: t.id, message: 'Searching for opponent...' })); this.tryPair(t); broadcastLobby(); } }
+      if (m.type === 'game-finished') { const t = this.tournaments.get(m.tournamentId); if (t && t.format === 'arena') { if (!t.waiting) t.waiting = []; if (!t.waiting.includes(myId)) t.waiting.push(myId); const meUser = this.users.get(myId); if (meUser) meUser.ws.send(JSON.stringify({ type: 'waiting-for-opponent', tournamentId: t.id, message: 'Game finished! Finding next opponent...' })); this.tryPair(t); broadcastLobby(); } }
+      if (m.type === 'stake-game-won') { const t = this.tournaments.get(m.tournamentId); const stake = t?.stake || m.stake || 0; if (stake > 0) { const pot = stake * 2; const me = this.users.get(myId); const tx = this.addTransaction('stake_win', pot, `Stake game - Winner: ${me?.name} - Pot K${pot}`, me?.name); for (const s of this.users.values()) { try { s.ws.send(JSON.stringify({ type: 'stake-settled', winner: me?.name, pot, winnerPayout: tx.payout, adminFee: tx.adminFee, tax: tx.tax })) } catch {} } } }
+    });
+    server.addEventListener('close', () => { for (const t of this.tournaments.values()) { if (t.waiting) t.waiting = t.waiting.filter(id => id !== myId); } this.users.delete(myId); broadcastLobby(); });
+    return new Response(null, { status: 101, webSocket: client });
+  }
+}
+export default { async fetch(request, env, ctx) { const url = new URL(request.url); if (url.pathname.startsWith('/api/')) { const id = env.LOBBY.idFromName('global-lobby'); return env.LOBBY.get(id).fetch(request); } if (url.pathname === '/ws/lobby') { const id = env.LOBBY.idFromName('global-lobby'); return env.LOBBY.get(id).fetch(request); } if (url.pathname === '/ws') { const room = url.searchParams.get('room') || 'default'; const id = env.CHESS_ROOM.idFromName(room); return env.CHESS_ROOM.get(id).fetch(request); } return env.ASSETS.fetch(request); } }
 
 
