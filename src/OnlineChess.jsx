@@ -5,9 +5,9 @@ const P = { K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'�
 const STAKES = [10, 20, 50, 100]
 const fmt = (s) => `${Math.floor(s/60)}:${String(s%60).padStart(2,'0')}`
 
-export default function OnlineChess({ onBack }) {
+export default function OnlineChess({ onBack, initialRoom, initialStake }) {
   const [wallet, setWallet] = useState(() => parseInt(localStorage.getItem('zed_wallet') || '500'))
-  const [stake, setStake] = useState(20)
+  const [stake, setStake] = useState(initialStake || 20)
   const [joinCode, setJoinCode] = useState('')
   const [room, setRoom] = useState('')
   const [inGame, setInGame] = useState(false)
@@ -20,6 +20,7 @@ export default function OnlineChess({ onBack }) {
   const [bt, setBt] = useState(600)
   const [result, setResult] = useState('')
   const wsRef = useRef(null)
+  const autoJoinedRef = useRef(false)
 
   const over = game.isCheckmate() || game.isDraw()
 
@@ -75,6 +76,29 @@ export default function OnlineChess({ onBack }) {
     setRoom(code); saveWallet(wallet - stake); setInGame(true); setGame(new Chess()); setWt(600); setBt(600); setResult('')
     connect(code, false)
   }
+
+  // AUTO-JOIN from Live Lobby challenge accept
+  useEffect(() => {
+    if (initialRoom && !autoJoinedRef.current) {
+      autoJoinedRef.current = true
+      const code = initialRoom.toUpperCase()
+      const s = initialStake || 20
+      setStake(s)
+      setJoinCode(code)
+      setRoom(code)
+      setInGame(true)
+      setGame(new Chess())
+      setWt(600); setBt(600); setResult('')
+      setStatus(`Joined ${code} - Waiting...`)
+      // Deduct stake once
+      const currentWallet = parseInt(localStorage.getItem('zed_wallet') || '500')
+      if (currentWallet >= s) {
+        saveWallet(currentWallet - s)
+      }
+      setTimeout(() => connect(code, false), 300)
+    }
+    // eslint-disable-next-line
+  }, [initialRoom])
 
   const leave = () => {
     try { wsRef.current?.close() } catch(e) {}
