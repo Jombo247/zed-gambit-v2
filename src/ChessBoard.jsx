@@ -71,15 +71,19 @@ export default function ChessBoard() {
       </div>
       <div className="board-status">{status}</div>
       <div className="board">
-        {board.flat().map((sq) => {
-          const isLight = (sq.square.charCodeAt(0) + sq.square.charCodeAt(1)) % 2 === 1
-          const piece = sq.type ? pieces[sq.color === 'w' ? sq.type.toUpperCase() : sq.type] : ''
-          return (
-            <button key={sq.square} onClick={() => handleClick(sq.square)} className={`square ${isLight ? 'light' : 'dark'} ${selected === sq.square ? 'selected' : ''}`}>
-              <span className={sq.color === 'w' ? 'white-piece' : 'black-piece'}>{piece}</span>
-            </button>
-          )
-        })}
+        {board.flat().map((sq, i) => {
+  const file = 'abcdefgh'[i % 8]
+  const rank = 8 - Math.floor(i / 8)
+  const squareName = sq ? sq.square : `${file}${rank}`
+  const isLight = (squareName.charCodeAt(0) + squareName.charCodeAt(1)) % 2 === 1
+  const piece = sq ? pieces[sq.color === 'w' ? sq.type.toUpperCase() : sq.type] : ''
+  return (
+    <button key={squareName} onClick={() => handleClick(squareName)} className={`square ${isLight ? 'light' : 'dark'}`}>
+      {sq && <span className={sq.color === 'w' ? 'white-piece' : 'black-piece'}>{piece}</span>}
+    </button>
+  )
+})}
+
       </div>
       <button onClick={reset} className="reset-btn">Reset Game</button>
     </div>
