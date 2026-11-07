@@ -3,6 +3,11 @@ name = "zed-gambit-v2"
 compatibility_date = "2024-01-01"
 main = "worker.mjs"
 
+[assets]
+directory = "./dist"
+binding = "ASSETS"
 
+
+ENV = "production"
 
 
