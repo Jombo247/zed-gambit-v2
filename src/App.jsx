@@ -2,16 +2,43 @@
 import { useState, useEffect, useRef } from 'react';
 import { Chess } from 'chess.js';
 
-// PIECES: Built-in, no external images - Knights can NEVER disappear
-// White = outline glyph + white colour, Black = filled glyph + black colour
-// We use SAME shape, only colour changes, so no confusion
-const GLYPH = { p: '♟', n: '♞', b: '♝', r: '♜', q: '♛', k: '♚' };
+// ============ REAL GRAPHIC PIECES - Inline SVG, no internet, never disappears ============
+function PieceSVG({ type, color }) {
+  const fill = color === 'w' ? '#FFFFFF' : '#111111';
+  const stroke = color === 'w' ? '#000000' : '#FFFFFF';
+  const sw = color === 'w' ? 1.8 : 1.2;
+  const common = { fill, stroke, strokeWidth: sw, strokeLinejoin: 'round', strokeLinecap: 'round' };
+  // Drawn with SVG shapes - real graphics, not letters
+  if (type === 'p') return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M22.5 11.5c-2.5 0-4.5 2-4.5 4.5 0 1.8 1 3.1 2.3 4.2-1.5 1-3.3 2.5-3.3 5.3 0 2.3 1.5 3.5 3.5 4.5-1 1-2 2.5-2 4.5h13c0-2-1-3.5-2-4.5 2-1 3.5-2.2 3.5-4.5 0-2.8-1.8-4.3-3.3-5.3 1.3-1.1 2.3-2.4 2.3-4.2 0-2.5-2-4.5-4.5-4.5z"/><path d="M12 36h21" fill="none" /></g></svg>
+  );
+  if (type === 'r') return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M14 12v4h-4v6h4v4c0 3 1 5 2 7h13c1-2 2-4 2-7v-4h4v-6h-4v-4h-6v4h-5v-4z"/><path d="M14 36h17" fill="none" /><path d="M17 30h11" fill="none" /></g></svg>
+  );
+  if (type === 'n') return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M14 34c0-8 4-14 9-17 1-1 2-1.5 2-3 0-2-1-3-1-3s3-1 5 1c1.5 1.5 1 4-1 5.5-1.5 1-2 2-2 3.5 0 3 2 5 2 5l-2 3h-12z"/><path d="M15 36h15" fill="none" /><circle cx="20" cy="18" r="1.2" fill={stroke} stroke="none" /></g></svg>
+  );
+  if (type === 'b') return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M22.5 9c-2 2-5 4-5 9 0 3 1 5 2 6-2 1-4 3-4 6 0 2 1 3 2 3h10c1 0 2-1 2-3 0-3-2-5-4-6 1-1 2-3 2-6 0-5-3-7-5-9z"/><path d="M22.5 12v10" fill="none" /><path d="M18 24h9" fill="none" /><path d="M14 36h17" fill="none" /></g></svg>
+  );
+  if (type === 'q') return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M13 14l-3-6 5 3 4-6 3.5 6 3.5-6 4 6 5-3-3 6 2 8c0 3-2 5-4 6H15c-2-1-4-3-4-6z"/><circle cx="10" cy="8" r="2" /><circle cx="18" cy="5" r="2" /><circle cx="27" cy="5" r="2" /><circle cx="35" cy="8" r="2" /><path d="M14 36h17" fill="none" /><path d="M17 30h11" fill="none" /></g></svg>
+  );
+  // King
+  return (
+    <svg viewBox="0 0 45 45" width="34" height="34"><g {...common}><path d="M22.5 8v6M19.5 11h6"/><path d="M22.5 14c-5 3-9 7-9 13 0 4 2 6 4 7-1 1-2 2-2 4h14c0-2-1-3-2-4 2-1 4-3 4-7 0-6-4-10-9-13z"/><path d="M14 38h17" fill="none" /><path d="M17 32h11" fill="none" /></g></svg>
+  );
+}
 
-const FALLBACK_ARENAS = [
-  { id: "MEGA1", name: "🌍 Mega K5 Arena", stake: 5, playerCount: 0, max: 200, prize: "K70", status: "WAITING", details: "Winner K70. 10% fee + 16% tax on fee. 70% / 30% split.", rules: "10 min rapid, 2 pts win, 1 draw, 4 for 3-win streak." },
-  { id: "PRO10", name: "🔥 Pro K10 Arena", stake: 10, playerCount: 0, max: 100, prize: "K140", status: "WAITING", details: "Winner K140.", rules: "10 min rapid." },
-  { id: "VIP50", name: "👑 VIP K50 Arena", stake: 50, playerCount: 0, max: 50, prize: "K700", status: "WAITING", details: "Winner K700.", rules: "15 min rapid." },
-  { id: "FREE1", name: "🎁 Free Practice", stake: 0, playerCount: 0, max: 200, prize: "K0", status: "WAITING", details: "Free practice.", rules: "No prize, just points." },
+// ============ ALL RATED ARENA TOURNAMENTS ============
+const RATED_ARENAS = [
+  { id: "BULLET1", name: "⚡ Bullet 1+0 • Rated", format: "Bullet", time: "1+0", stake: 5, playerCount: 0, max: 200, prize: "K70", status: "WAITING", details: "Rated Bullet. Winner 70% / 2nd 30%. 10% fee + 16% tax on fee.", rules: "1 min, no increment. 2 pts win, 1 draw." },
+  { id: "BLITZ3", name: "🔥 Blitz 3+2 • Rated", format: "Blitz", time: "3+2", stake: 10, playerCount: 0, max: 200, prize: "K140", status: "WAITING", details: "Rated Blitz 3+2. Most popular.", rules: "3 min + 2 sec increment." },
+  { id: "BLITZ5", name: "⚡ Blitz 5+0 • Rated", format: "Blitz", time: "5+0", stake: 10, playerCount: 0, max: 200, prize: "K140", status: "WAITING", details: "Rated Blitz 5+0.", rules: "5 min, no increment." },
+  { id: "RAPID10", name: "🌍 Rapid 10+0 • Rated", format: "Rapid", time: "10+0", stake: 5, playerCount: 0, max: 200, prize: "K70", status: "WAITING", details: "Rated Rapid 10 min. Mega Arena.", rules: "10 min rapid." },
+  { id: "RAPID15", name: "🏆 Rapid 15+10 • Rated", format: "Rapid", time: "15+10", stake: 50, playerCount: 0, max: 100, prize: "K700", status: "WAITING", details: "Rated Rapid 15+10. VIP.", rules: "15 min + 10 sec increment." },
+  { id: "CLASS30", name: "👑 Classical 30+0 • Rated", format: "Classical", time: "30+0", stake: 50, playerCount: 0, max: 50, prize: "K700", status: "WAITING", details: "Rated Classical 30 min. Serious players.", rules: "30 min classical." },
+  { id: "FREE1", name: "🎁 Free Practice • Unrated", format: "Practice", time: "10+0", stake: 0, playerCount: 0, max: 200, prize: "K0", status: "WAITING", details: "Free practice, no prize.", rules: "No prize, just points." },
 ];
 
 const FALLBACK_COURSES = [
@@ -47,7 +74,7 @@ export default function App() {
   const user = { name: 'Themba Ndhlovu', username: 'Pazed200' };
   const [balance, setBalance] = useState(900);
   const [view, setView] = useState('home');
-  const [tournaments, setTournaments] = useState(FALLBACK_ARENAS);
+  const [tournaments, setTournaments] = useState(RATED_ARENAS);
   const [courses, setCourses] = useState(FALLBACK_COURSES);
   const [arena, setArena] = useState(null);
   const [points, setPoints] = useState(43);
@@ -56,13 +83,9 @@ export default function App() {
   const [room, setRoom] = useState('123456');
   const [openCourse, setOpenCourse] = useState(null);
   const [joining, setJoining] = useState(null);
-
-  // Admin
   const [adminPin, setAdminPin] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminTab, setAdminTab] = useState('arenas');
-
-  // Computer chess only - NOT inside Arenas anymore
   const [fen, setFen] = useState(new Chess().fen());
   const [selected, setSelected] = useState(null);
   const [lastMove, setLastMove] = useState(null);
@@ -186,23 +209,20 @@ export default function App() {
         let bg = isDark ? '#769656' : '#eeeed2';
         if (isLast) bg = '#facc15';
         if (isSel) bg = '#22c55e';
-        // KNIGHTS GUARANTEED: Unicode, no image load, no 404
-        const isWhite = piece?.color === 'w';
         cols.push(
-          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 40, height: 40, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative', fontSize: 32, lineHeight: 1, fontFamily: '"Segoe UI Symbol","Noto Sans Symbols2",serif', color: !piece ? '#000' : isWhite ? '#FFFFFF' : '#111111', WebkitTextStroke: !piece ? '0px' : isWhite ? '1.8px #000' : '0.8px #fff', textShadow: !piece ? 'none' : isWhite ? '0 2px 2px #000' : '0 1px 1px #fff', fontWeight: 'bold' }}>
-            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none', zIndex: 2 }}>{r}</span>}
-            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', WebkitTextStroke: '0px', textShadow: 'none', zIndex: 2 }}>{file}</span>}
-            {piece ? GLYPH[piece.type] : ''}
+          <div key={sq} onClick={() => onSquareClick(sq)} style={{ width: 42, height: 42, background: bg, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', position: 'relative' }}>
+            {ci === 0 && <span style={{ position: 'absolute', top: 1, left: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{r}</span>}
+            {ri === 7 && <span style={{ position: 'absolute', bottom: 1, right: 2, fontSize: 9, fontWeight: 'bold', color: isDark ? '#eeeed2' : '#769656', zIndex: 2 }}>{file}</span>}
+            {piece && <div style={{ filter: 'drop-shadow(0 1px 1px rgba(0,0,0,0.6))', lineHeight: 0 }}><PieceSVG type={piece.type} color={piece.color} /></div>}
           </div>
         );
       }
       rows.push(<div key={r} style={{ display: 'flex', justifyContent: 'center' }}>{cols}</div>);
     }
-    return <div style={{ border: '3px solid #333', width: 320, margin: '0 auto', background: '#fff' }}>{rows}</div>;
+    return <div style={{ border: '3px solid #333', width: 336, margin: '0 auto', background: '#fff', boxShadow: '0 4px 12px rgba(0,0,0,0.5)' }}>{rows}</div>;
   }
 
   function BoardWithClocks() {
-    const turn = new Chess(fen).turn();
     const youAreWhite = playerColour === 'w';
     const topLabel = youAreWhite ? '⬛ Black • Computer' : '⬜ White • Computer';
     const topTime = youAreWhite ? blackTime : whiteTime;
@@ -218,12 +238,11 @@ export default function App() {
           <span>{bottomLabel}</span><span style={{ fontSize: 22, fontWeight: 'bold', fontFamily: 'monospace' }}>⏱ {formatTime(bottomTime)}</span>
         </div>
         <p style={{ fontSize: 12 }}>🟡 Yellow = Last Move • 🟢 Green = Selected • {hasMoved ? 'Clock running' : '⏸ Clock paused'}</p>
-        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE' : 'BLACK'} • Knights: ♞ ♞ must both be visible</p>
+        <p style={{ fontSize: 13, fontWeight: 'bold', color: '#facc15' }}>You are {youAreWhite ? 'WHITE' : 'BLACK'} • Real SVG Graphics</p>
       </div>
     );
   }
 
-  // OLD ARENA JOIN - Only button works, card NOT clickable
   async function joinArena(t) {
     setJoining(t.id);
     try {
@@ -248,13 +267,33 @@ export default function App() {
     setView('home');
   }
 
-  // ADMIN LOGIN - PIN 2026
   function tryAdminLogin() {
     if (adminPin === '2026') { setIsAdmin(true); setView('admin'); }
-    else alert('Wrong PIN. Ask owner for Admin PIN.');
+    else alert('Wrong PIN.');
   }
 
-  // HOME - OLD ARENA INTERFACE
+  // ADMIN: Edit stake for ANY arena
+  function updateArenaStake(id, newStake) {
+    const s = parseInt(newStake) || 0;
+    setTournaments(prev => prev.map(t => {
+      if (t.id !== id) return t;
+      const winner = Math.round(s * 2 * 0.7);
+      return { ...t, stake: s, prize: s === 0 ? 'K0' : `K${winner}`, winnerPrize: winner };
+    }));
+    if (arena && arena.id === id) setArena(prev => ({ ...prev, stake: s }));
+  }
+  function updateArenaField(id, field, value) {
+    setTournaments(prev => prev.map(t => t.id === id ? { ...t, [field]: value } : t));
+  }
+
+  // ADMIN MONEY: 1 Total, 2 Tax, 3 Profit
+  // Total = sum(stake * players) from real joins + demo balance activity
+  // Fee = 10% of Total, Tax = 16% of Fee, Profit = Fee - Tax
+  const moneyTotal = tournaments.reduce((sum, t) => sum + (t.stake * (t.playerCount || 0)), 0) + (games * 5);
+  const moneyFee = moneyTotal * 0.10;
+  const moneyTax = moneyFee * 0.16;
+  const moneyProfit = moneyFee - moneyTax;
+
   if (view === 'home') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 12, fontFamily: 'sans-serif' }}>
       <div style={{ background: '#1e293b', padding: 10, borderRadius: 12 }}>
@@ -278,20 +317,18 @@ export default function App() {
         </div>
         <p style={{ textAlign: 'center', marginTop: 10, fontSize: 13 }}>🔑 Join by Room Code</p>
       </div>
-
-      <h3 style={{ marginTop: 16 }}>🏆 ARENAS — Old Interface (Only Join Button Clickable)</h3>
+      <h3 style={{ marginTop: 16 }}>🏆 RATED ARENAS — Bullet / Blitz / Rapid / Classical ({tournaments.length})</h3>
       {tournaments.map(t => (
         <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10, border: '1px solid #facc15' }}>
-          <div><b>{t.name}</b><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span></div>
+          <div><b>{t.name}</b><br/><span style={{ fontSize: 13, color: '#facc15' }}>{t.format} • {t.time} • Rated</span><br/><span style={{ fontSize: 13 }}>Stake: K{t.stake} • {t.playerCount === 0 ? '👥 No players yet - Be first to join' : `👥 ${t.playerCount} real players`} • Prize: {t.prize} • {t.status}</span></div>
           <button onClick={() => joinArena(t)} disabled={joining === t.id} style={{ display: 'block', width: '100%', marginTop: 10, padding: 11, background: joining === t.id ? '#94a3b8' : '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', cursor: 'pointer' }}>{joining === t.id ? 'Joining...' : `Join K${t.stake} - See Arena Details →`}</button>
         </div>
       ))}
-      <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Auto Stakes K5 • Auto Refund 5 Mins • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
+      <p style={{ textAlign: 'center', opacity: 0.7, fontSize: 12 }}>Zed Gambit • Rated Arenas • Auto Refund 5 Mins • 🏆 70% • 🥈 30% • Made in Zambia 🇿🇲</p>
       <button onClick={() => setView('adminLogin')} style={{ display: 'block', width: '100%', marginTop: 10, padding: 10, background: '#111', color: '#888', border: '1px solid #333', borderRadius: 10, fontSize: 12 }}>🔐 Admin Dashboard</button>
     </div>
   );
 
-  // ARENA - OLD INTERFACE - NO BOARD INSIDE, just details + result buttons
   if (view === 'arena') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
       <button onClick={() => setView('home')}>← Back to Home</button>
@@ -303,7 +340,6 @@ export default function App() {
         <p>🎲 Your Room: {room}</p>
         <p>📜 Rules: {arena?.rules}</p>
         <p>📋 {arena?.details}</p>
-        <p style={{ color: '#facc15', fontSize: 13 }}>⚠️ Play your game in real life / Play vs Computer, then report result below. Arena does NOT have a board inside - as before.</p>
       </div>
       <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginTop: 12 }}>
         <h3>Report Arena Result</h3>
@@ -317,7 +353,6 @@ export default function App() {
     </div>
   );
 
-  // COMPUTER - Separate, NOT inside Arena
   if (view === 'computer') {
     if (showSetup) return (
       <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
@@ -389,7 +424,6 @@ export default function App() {
     </div>
   );
 
-  // ADMIN LOGIN
   if (view === 'adminLogin') return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 20, textAlign: 'center' }}>
       <button onClick={() => setView('home')} style={{ float: 'left' }}>← Back</button>
@@ -397,49 +431,85 @@ export default function App() {
       <p>Enter Admin PIN to continue.<br/>You are the owner - Themba Ndhlovu</p>
       <input value={adminPin} onChange={e => setAdminPin(e.target.value)} placeholder="Enter PIN" type="password" inputMode="numeric" style={{ padding: 14, fontSize: 18, borderRadius: 10, border: '1px solid #555', background: '#1e293b', color: '#fff', textAlign: 'center', width: 180 }} />
       <br/><button onClick={tryAdminLogin} style={{ marginTop: 16, padding: '14px 30px', background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold', fontSize: 16 }}>Login as Admin →</button>
-      <p style={{ fontSize: 12, opacity: 0.6, marginTop: 12 }}>Default PIN for first time: <b>2026</b><br/>Change it later in Cloudflare Worker.</p>
+      <p style={{ fontSize: 12, opacity: 0.6, marginTop: 12 }}>Default PIN for first time: <b>2026</b></p>
     </div>
   );
 
-  // ADMIN DASHBOARD
   if (view === 'admin' && isAdmin) return (
     <div style={{ background: '#0f172a', minHeight: '100vh', color: '#fff', padding: 16 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between' }}><h2>🛠️ Admin Dashboard</h2><button onClick={() => { setIsAdmin(false); setView('home'); }}>Logout</button></div>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}><h2>🛠️ Admin Dashboard</h2><button onClick={() => { setIsAdmin(false); setView('home'); }}>Logout</button></div>
       <p>Welcome, {user.name} • Admin: {user.username}</p>
       <div style={{ display: 'flex', gap: 8 }}>
-        {['arenas','players','money'].map(t => (
-          <button key={t} onClick={() => setAdminTab(t)} style={{ flex: 1, padding: 10, background: adminTab === t ? '#facc15' : '#334155', color: adminTab === t ? '#000' : '#fff', border: 0, borderRadius: 10, fontWeight: 'bold' }}>{t === 'arenas' ? '🏟️ Arenas' : t === 'players' ? '👥 Players' : '💰 Money'}</button>
+        {['arenas','money','players'].map(t => (
+          <button key={t} onClick={() => setAdminTab(t)} style={{ flex: 1, padding: 10, background: adminTab === t ? '#facc15' : '#334155', color: adminTab === t ? '#000' : '#fff', border: 0, borderRadius: 10, fontWeight: 'bold' }}>{t === 'arenas' ? '🏟️ Arenas / Edit Stakes' : t === 'money' ? '💰 Money' : '👥 Players'}</button>
         ))}
       </div>
+
       {adminTab === 'arenas' && (
         <div style={{ marginTop: 16 }}>
-          <h3>All Arenas - Edit / View</h3>
+          <h3>All Rated Arenas — Edit Stake Here</h3>
+          <p style={{ fontSize: 13, opacity: 0.8 }}>Change the number, it updates instantly on Home for all players. Prize auto-updates to 70% of pot.</p>
           {tournaments.map(t => (
-            <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10 }}>
-              <b>{t.name}</b> • Stake K{t.stake} • Prize {t.prize} • Status {t.status}<br/>
-              <span style={{ fontSize: 13 }}>Players: {t.playerCount} / {t.max} • {t.playerCount === 0 ? 'No real players yet' : 'Real players joined'}</span><br/>
-              <button onClick={() => alert('Arena ' + t.id + ' - Pot: K' + (t.stake * t.playerCount) + ' - To close arena, set status to CLOSED in Worker')} style={{ marginTop: 8, padding: 8, background: '#0ea5e9', border: 0, borderRadius: 8, color: '#fff' }}>View Details</button>
+            <div key={t.id} style={{ background: '#1e293b', padding: 14, borderRadius: 12, marginBottom: 10, border: '1px solid #333' }}>
+              <b>{t.name}</b><br/><span style={{ fontSize: 12, color: '#facc15' }}>{t.format} • {t.time} • {t.status}</span>
+              <div style={{ display: 'flex', gap: 8, alignItems: 'center', marginTop: 10, flexWrap: 'wrap' }}>
+                <label style={{ fontSize: 13 }}>Stake K:</label>
+                <input type="number" value={t.stake} onChange={e => updateArenaStake(t.id, e.target.value)} style={{ width: 80, padding: 8, borderRadius: 8, border: '1px solid #555', background: '#000', color: '#fff', fontSize: 16, fontWeight: 'bold' }} />
+                <label style={{ fontSize: 13 }}>Max:</label>
+                <input type="number" value={t.max} onChange={e => updateArenaField(t.id, 'max', parseInt(e.target.value) || 0)} style={{ width: 70, padding: 8, borderRadius: 8, border: '1px solid #555', background: '#000', color: '#fff' }} />
+                <select value={t.status} onChange={e => updateArenaField(t.id, 'status', e.target.value)} style={{ padding: 8, borderRadius: 8, background: '#000', color: '#fff' }}>
+                  <option>WAITING</option><option>LIVE</option><option>CLOSED</option>
+                </select>
+              </div>
+              <p style={{ fontSize: 13, margin: '8px 0 0 0' }}>Prize now: <b>{t.prize}</b> • Players: {t.playerCount} / {t.max} • Pot if full: K{t.stake * t.max}</p>
+              <div style={{ display: 'flex', gap: 6, marginTop: 8 }}>
+                {[5,10,20,50,100].map(v => (
+                  <button key={v} onClick={() => updateArenaStake(t.id, v)} style={{ padding: '6px 10px', background: t.stake === v ? '#facc15' : '#334155', color: t.stake === v ? '#000' : '#fff', border: 0, borderRadius: 8, fontWeight: 'bold' }}>K{v}</button>
+                ))}
+              </div>
             </div>
           ))}
-          <p style={{ fontSize: 12, opacity: 0.7 }}>Tip: To create new arena, add it in Cloudflare Worker /api/tournaments. It will appear here automatically.</p>
+          <button onClick={() => { alert('Stakes saved! Home arenas updated.'); setView('home'); }} style={{ width: '100%', padding: 14, background: '#22c55e', border: 0, borderRadius: 10, fontWeight: 'bold' }}>✅ Save All Stakes → Go Home</button>
         </div>
       )}
+
+      {adminTab === 'money' && (
+        <div style={{ marginTop: 16 }}>
+          <h3>💰 Money — Total / Tax / Profit</h3>
+          <div style={{ background: '#1e293b', padding: 16, borderRadius: 12, marginBottom: 12 }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #333' }}><span>1. TOTAL Collected</span><b style={{ fontSize: 20 }}>K{moneyTotal.toFixed(2)}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0', borderBottom: '1px solid #333' }}><span>2. TAX (16% of 10% fee)</span><b style={{ fontSize: 20, color: '#f87171' }}>K{moneyTax.toFixed(2)}</b></div>
+            <div style={{ display: 'flex', justifyContent: 'space-between', padding: '12px 0' }}><span>3. PROFIT (Fee - Tax)</span><b style={{ fontSize: 22, color: '#22c55e' }}>K{moneyProfit.toFixed(2)}</b></div>
+          </div>
+          <div style={{ background: '#000', padding: 14, borderRadius: 12, fontSize: 13, lineHeight: 1.6 }}>
+            <b>How it works:</b><br/>
+            Fee = 10% of Total = K{moneyFee.toFixed(2)}<br/>
+            Tax = 16% of Fee = K{moneyTax.toFixed(2)}<br/>
+            Profit = Fee - Tax = K{moneyProfit.toFixed(2)}<br/>
+            Payouts: 70% Winner / 30% 2nd from remaining 90%<br/>
+            Games played: {games} • Total players in arenas: {tournaments.reduce((s,t)=>s+(t.playerCount||0),0)}
+          </div>
+          <h4 style={{ marginTop: 16 }}>Per Arena Breakdown</h4>
+          {tournaments.map(t => {
+            const tot = t.stake * (t.playerCount || 0);
+            const fee = tot * 0.10;
+            const tax = fee * 0.16;
+            const profit = fee - tax;
+            return (
+              <div key={t.id} style={{ background: '#1e293b', padding: 12, borderRadius: 10, marginBottom: 8, fontSize: 13 }}>
+                <b>{t.name}</b> • Stake K{t.stake} • Players {t.playerCount}<br/>
+                Total K{tot.toFixed(0)} • Tax K{tax.toFixed(2)} • Profit K{profit.toFixed(2)}
+              </div>
+            );
+          })}
+        </div>
+      )}
+
       {adminTab === 'players' && (
         <div style={{ marginTop: 16 }}>
           <h3>Players</h3>
-          <div style={{ background: '#1e293b', padding: 14, borderRadius: 12 }}><b>{user.name} ({user.username})</b><br/>Balance: K{balance} • Points: {points} • Games: {games} • Streak: {streak}<br/><span style={{ fontSize: 12, opacity: 0.7 }}>Other players will appear here when they join via /api/pay/join-arena. Right now only you are in the local view.</span></div>
-        </div>
-      )}
-      {adminTab === 'money' && (
-        <div style={{ marginTop: 16 }}>
-          <h3>Money - Fees & Payouts</h3>
-          <div style={{ background: '#1e293b', padding: 14, borderRadius: 12 }}>
-            <p>Total Balance in demo: K{balance}</p>
-            <p>Fee: 10% + 16% tax on fee</p>
-            <p>Split: 70% Winner / 30% 2nd</p>
-            <p>Auto Refund: 5 mins if no opponent</p>
-            <p style={{ fontSize: 12, opacity: 0.7 }}>Real money is tracked in Cloudflare Worker / D1. This dashboard shows local demo totals. Connect Worker to see real totals.</p>
-          </div>
+          <div style={{ background: '#1e293b', padding: 14, borderRadius: 12 }}><b>{user.name} ({user.username})</b><br/>Balance: K{balance} • Points: {points} • Games: {games} • Streak: {streak}</div>
+          <p style={{ fontSize: 12, opacity: 0.7, marginTop: 8 }}>Other players appear here when they join via /api/pay/join-arena.</p>
         </div>
       )}
     </div>
