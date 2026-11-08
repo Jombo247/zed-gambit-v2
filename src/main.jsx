@@ -1,4 +1,12 @@
+Okay, delete all and paste this one. This is the clean version.
 
+Do this:
+
+1. Open src/main.jsx
+2. Select ALL, Delete
+3. Paste this whole thing
+
+jsx
 import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
