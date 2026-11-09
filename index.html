@@ -4,48 +4,58 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zed Gambit</title>
+<title>Zed Gambit - Play Chess, Ludo, Checkers & More</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js"></script>
 <style>
 body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px}
-.topbar{display:flex;justify-content:space-between;align-items:center;max-width:420px;margin:auto}
+.topbar{display:flex;justify-content:space-between;align-items:center;max-width:480px;margin:auto}
 .balance{background:#1f2937;padding:8px 14px;border-radius:20px;font-size:15px}
-h2{margin:5px 0;text-align:center}
-.arena{background:#1f2937;max-width:420px;margin:12px auto;padding:16px;border-radius:14px}
-.arena h3{margin:0;font-size:18px}
-.arena p{margin:4px 0;font-size:13px;opacity:.7}
-.arena button{width:100%;padding:12px;border:0;border-radius:10px;background:#22c55e;font-weight:900;font-size:15px;margin-top:8px;cursor:pointer}
-.arena button:disabled{background:#374151;color:#9ca3af}
-.card{background:#1f2937;max-width:420px;margin:12px auto;padding:14px;border-radius:14px;text-align:left}
-.verify-box{background:#fff;color:#000;max-width:420px;margin:12px auto;padding:16px;border-radius:14px;text-align:left}
+h2{margin:8px 0;text-align:center}
+.tabs{display:flex;gap:6px;max-width:480px;margin:10px auto;overflow-x:auto}
+.tab{background:#1f2937;padding:8px 14px;border-radius:20px;font-size:13px;white-space:nowrap;cursor:pointer;border:0;color:#fff}
+.tab.active{background:#facc15;color:#000;font-weight:900}
+.game-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;max-width:480px;margin:auto}
+.game-card{background:#1f2937;padding:14px;border-radius:14px;text-align:center;cursor:pointer;position:relative}
+.game-card.live{outline:2px solid #22c55e}
+.game-card .emoji{font-size:38px}
+.game-card h3{margin:6px 0 2px;font-size:15px}
+.game-card p{margin:0;font-size:12px;opacity:.7}
+.game-card button{width:100%;padding:9px;border:0;border-radius:8px;background:#22c55e;font-weight:900;margin-top:8px;cursor:pointer;color:#fff}
+.game-card button.locked{background:#374151}
+.badge{position:absolute;top:8px;right:8px;font-size:10px;padding:3px 7px;border-radius:10px;font-weight:900}
+.badge-live{background:#22c55e;color:#000}.badge-soon{background:#f59e0b;color:#000}.badge-new{background:#3b82f6;color:#fff}
+.verify-box{background:#fff;color:#000;max-width:480px;margin:12px auto;padding:16px;border-radius:14px;text-align:left}
 .verify-box input{width:100%;padding:12px;border:2px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box;margin:6px 0}
 .step{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
 .step-num{width:28px;height:28px;min-width:28px;background:#111827;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px}
-.step.done .step-num{background:#22c55e}
-.step.active .step-num{background:#facc15;color:#000}
+.step.done .step-num{background:#22c55e}.step.active .step-num{background:#facc15;color:#000}
+.arena{background:#1f2937;max-width:480px;margin:12px auto;padding:16px;border-radius:14px}
+.arena h3{margin:0;font-size:17px}.arena p{margin:4px 0;font-size:13px;opacity:.7}
+.arena button{width:100%;padding:12px;border:0;border-radius:10px;background:#22c55e;font-weight:900;font-size:15px;margin-top:8px;cursor:pointer}
+.card{background:#1f2937;max-width:480px;margin:12px auto;padding:14px;border-radius:14px;text-align:left}
 button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
 .opt{background:#374151}.opt.active{background:#facc15;color:#000}
-.player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:420px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
+.player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:480px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
 .player-bar.active{outline:2px solid #facc15}
 .avatar{width:32px;height:32px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;font-size:18px}
 .clock{background:#000;color:#fff;padding:6px 12px;border-radius:8px;font-size:22px;font-weight:800;min-width:70px}
 .clock.active{background:#facc15;color:#000}
-#board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
+#board,#checkersBoard{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
 .light{background:#ebecd0}.dark{background:#739552}
 .square.selected{outline:3px solid #facc15;outline-offset:-3px}
 .square.lastmove{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.35)}
 .square.legal::after{content:'';width:22%;height:22%;background:rgba(0,0,0,0.25);border-radius:50%;position:absolute}
-.square.legal-capture::after{content:'';width:92%;height:92%;border:4px solid rgba(0,0,0,0.25);border-radius:50%;position:absolute}
 .square.check{background:#ef4444 !important}
 .square img{width:96%;height:96%;object-fit:contain;pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
-.moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
-.captured{font-size:16px;min-height:20px}
+.moves{background:#1f2937;max-width:480px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
 #status{font-weight:800;color:#facc15;margin:6px;text-align:center}
 .banned{background:#fee2e2;border:2px solid #ef4444;padding:10px;border-radius:10px;color:#991b1b;font-weight:800;font-size:13px}
 .clean{background:#dcfce7;border:2px solid #22c55e;padding:10px;border-radius:10px;color:#166534;font-weight:800;font-size:13px}
+.ludo-board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;background:#fff;border-radius:12px;display:grid;grid-template-columns:repeat(15,1fr);grid-template-rows:repeat(15,1fr);overflow:hidden;border:3px solid #000}
+.dice{width:70px;height:70px;background:#fff;color:#000;font-size:38px;font-weight:900;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:auto;cursor:pointer}
 .timeline{position:relative;padding-left:22px;margin:10px 0}
 .timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:3px;background:#374151}
 .t-step{position:relative;margin:10px 0;font-size:13px}
@@ -60,254 +70,286 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
   <div style="font-weight:900;font-size:20px">♞ ZED GAMBIT</div>
   <div class="balance">Balance: <b id="balanceText">K100</b></div>
 </div>
+<p style="text-align:center;font-size:12px;opacity:.7;margin:2px">Zambia's Games Platform • Chess • Ludo • Checkers • More</p>
 
-<!-- ===== VERIFY FLOW - ALWAYS ON TOP, CARDS BELOW STAY ===== -->
+<!-- ===== GAME HUB TABS ===== -->
+<div class="tabs">
+  <button class="tab active" onclick="filterGames('all',this)">🎮 All Games</button>
+  <button class="tab" onclick="filterGames('board',this)">♟️ Board</button>
+  <button class="tab" onclick="filterGames('dice',this)">🎲 Dice</button>
+  <button class="tab" onclick="filterGames('cards',this)">🃏 Cards</button>
+  <button class="tab" onclick="filterGames('arcade',this)">🕹️ Arcade</button>
+</div>
+
+<!-- ===== ALL GAMES GRID - ALWAYS VISIBLE ===== -->
+<div class="game-grid" id="gameGrid">
+  <!-- CHESS -->
+  <div class="game-card live" data-cat="board" onclick="openGame('chess')">
+    <span class="badge badge-live">● LIVE</span>
+    <div class="emoji">♞</div><h3>Chess</h3><p>Bullet • Blitz • Rapid</p>
+    <p style="color:#22c55e">124 online</p>
+    <button>Play Chess →</button>
+  </div>
+  <!-- LUDO -->
+  <div class="game-card live" data-cat="dice" onclick="openGame('ludo')">
+    <span class="badge badge-live">● LIVE</span>
+    <div class="emoji">🎲</div><h3>Ludo</h3><p>2-4 Players • Stake</p>
+    <p style="color:#22c55e">89 online</p>
+    <button>Play Ludo →</button>
+  </div>
+  <!-- CHECKERS / DRAUGHTS -->
+  <div class="game-card live" data-cat="board" onclick="openGame('checkers')">
+    <span class="badge badge-live">● LIVE</span>
+    <div class="emoji">🔴</div><h3>Checkers</h3><p>Draughts • Zambian Rules</p>
+    <p style="color:#22c55e">67 online</p>
+    <button>Play Checkers →</button>
+  </div>
+  <!-- DOMINOES -->
+  <div class="game-card" data-cat="board" onclick="openGame('domino')">
+    <span class="badge badge-new">NEW</span>
+    <div class="emoji">🁢</div><h3>Dominoes</h3><p>2-4 Players</p>
+    <p>Coming this week</p>
+    <button style="background:#3b82f6">Join Waitlist</button>
+  </div>
+  <!-- SNAKE / ARCADE -->
+  <div class="game-card" data-cat="arcade" onclick="openGame('snake')">
+    <span class="badge badge-new">NEW</span>
+    <div class="emoji">🐍</div><h3>Snake</h3><p>High Score Wins</p>
+    <p>Top score: K50 daily</p>
+    <button style="background:#3b82f6">Play Snake →</button>
+  </div>
+  <!-- CARDS / SPADES -->
+  <div class="game-card" data-cat="cards" onclick="openGame('cards')">
+    <span class="badge badge-soon">SOON</span>
+    <div class="emoji">🃏</div><h3>Cards - Spades</h3><p>4 Players • Teams</p>
+    <p>Launching soon</p>
+    <button class="locked">Notify Me</button>
+  </div>
+  <!-- DRAFT / NSOLO -->
+  <div class="game-card" data-cat="board" onclick="openGame('nsolo')">
+    <span class="badge badge-soon">SOON</span>
+    <div class="emoji">🪨</div><h3>Nsolo / Bao</h3><p>Traditional Zambian</p>
+    <p>Launching soon</p>
+    <button class="locked">Notify Me</button>
+  </div>
+  <!-- DICE / MWESO -->
+  <div class="game-card" data-cat="dice" onclick="openGame('dice')">
+    <span class="badge badge-soon">SOON</span>
+    <div class="emoji">🎯</div><h3>Dice Game</h3><p>Lucky 7 • Fast Win</p>
+    <p>Launching soon</p>
+    <button class="locked">Notify Me</button>
+  </div>
+</div>
+
+<!-- ===== VERIFY - 3 STEPS - SAME FOR ALL GAMES ===== -->
 <div class="verify-box">
-  <div style="font-weight:900;font-size:18px">✅ Join Zed Gambit - 3 Steps</div>
-
-  <!-- STEP 1 - CREATE ACCOUNT -->
-  <div class="step done" id="step1Box">
-    <div class="step-num">1</div>
-    <div style="flex:1">
-      <b>Create Chess Account</b><br>
-      <span style="font-size:12px;color:#555">If you don't have one, create free account in 1 minute.</span><br>
-      <button style="background:#2563eb;width:100%;margin-top:6px" onclick="createChessAccount()">+ Create Free Chess Account</button>
-    </div>
-  </div>
-
-  <!-- STEP 2 - VERIFY CHESS USERNAME (hidden lichess check) -->
-  <div class="step active" id="step2Box">
-    <div class="step-num">2</div>
-    <div style="flex:1">
-      <b>Verify Chess Username</b><br>
-      <span style="font-size:12px;color:#555">We check your fair-play history.</span>
-      <input id="chessUsername" placeholder="e.g. Pazed200">
-      <button style="background:#111827;width:100%" onclick="verifyUser()">Verify Username</button>
-      <div id="verifyResult" style="margin-top:6px"></div>
-    </div>
-  </div>
-
-  <!-- STEP 3 - VERIFY MOBILE MONEY -->
-  <div class="step" id="step3Box">
-    <div class="step-num">3</div>
-    <div style="flex:1">
-      <b>Verify Mobile Money</b><br>
-      <span style="font-size:12px;color:#555">Enter your MoMo number to receive winnings.</span>
-      <input id="momoNumber" placeholder="e.g. 0977 123 456">
-      <button style="background:#22c55e;width:100%" onclick="verifyMomo()">Verify Mobile Money</button>
-      <div id="momoResult" style="margin-top:6px"></div>
-    </div>
-  </div>
-
-  <div id="allVerified" style="display:none;background:#dcfce7;color:#166534;padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px">✅ All Verified! You can now Join any Arena below ↓</div>
+  <div style="font-weight:900;font-size:18px">✅ Join Zed Gambit - Works for ALL Games</div>
+  <p style="font-size:12px;color:#555">One verification = Play Chess, Ludo, Checkers, everything. One Balance for all games.</p>
+  <div class="step done" id="step1Box"><div class="step-num">1</div><div style="flex:1"><b>Create Chess Account</b><br><span style="font-size:12px;color:#555">For fair-play check. Free, 1 min.</span><br><button style="background:#2563eb;width:100%;margin-top:6px" onclick="createChessAccount()">+ Create Free Account</button></div></div>
+  <div class="step active" id="step2Box"><div class="step-num">2</div><div style="flex:1"><b>Verify Username</b><br><span style="font-size:12px;color:#555">We check fair-play history.</span><input id="chessUsername" placeholder="e.g. Pazed200"><button style="background:#111827;width:100%" onclick="verifyUser()">Verify Username</button><div id="verifyResult" style="margin-top:6px"></div></div></div>
+  <div class="step" id="step3Box"><div class="step-num">3</div><div style="flex:1"><b>Verify Mobile Money</b><br><span style="font-size:12px;color:#555">To receive winnings from ANY game.</span><input id="momoNumber" placeholder="e.g. 0977 123 456"><button style="background:#22c55e;width:100%" onclick="verifyMomo()">Verify Mobile Money</button><div id="momoResult" style="margin-top:6px"></div></div></div>
+  <div id="allVerified" style="display:none;background:#dcfce7;color:#166534;padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px">✅ All Verified! Play any game below ↓</div>
 </div>
 
-<!-- ===== RATED ARENAS - ALWAYS VISIBLE, NEVER GONE ===== -->
-<h2 style="text-align:left;max-width:420px;margin:15px auto 0">RATED ARENAS</h2>
-
-<div class="arena" id="arenaBullet">
-  <h3>Bullet 1+0 • Rated</h3>
-  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K5 • Prize: K70</p>
-  <p id="bulletPlayers">No players yet - Be first to join</p>
-  <button id="btnBullet" onclick="joinArena('Bullet 1+0',5,70)">Join Arena - K5</button>
+<!-- ===== RATED ARENAS - CHANGES PER GAME ===== -->
+<h2 style="text-align:left;max-width:480px;margin:15px auto 0" id="arenaTitle">RATED ARENAS - <span id="arenaGameName">Chess</span></h2>
+<div id="chessArenas">
+  <div class="arena"><h3>Bullet 1+0 • Rated</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K5 • Prize: K70</p><p id="bulletPlayers">No players yet - Be first to join</p><button onclick="joinArena('Chess Bullet 1+0',5,70,'chess')">Join Arena - K5</button></div>
+  <div class="arena"><h3>Blitz 3+2 • Rated</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K10 • Prize: K140</p><p id="blitz32Players">No players yet - Be first to join</p><button onclick="joinArena('Chess Blitz 3+2',10,140,'chess')">Join Arena - K10</button></div>
+  <div class="arena"><h3>Blitz 5+0 • Rated</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K10 • Prize: K140</p><p id="blitz50Players">No players yet - Be first to join</p><button onclick="joinArena('Chess Blitz 5+0',10,140,'chess')">Join Arena - K10</button></div>
+</div>
+<div id="ludoArenas" style="display:none">
+  <div class="arena"><h3>🎲 Ludo Quick • 2 Players</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K5 • Prize: K70</p><p>First to finish wins</p><button onclick="joinArena('Ludo Quick 2P',5,70,'ludo')">Join Arena - K5</button></div>
+  <div class="arena"><h3>🎲 Ludo Classic • 4 Players</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K10 • Prize: K280</p><p>Winner takes all</p><button onclick="joinArena('Ludo Classic 4P',10,280,'ludo')">Join Arena - K10</button></div>
+</div>
+<div id="checkersArenas" style="display:none">
+  <div class="arena"><h3>🔴 Checkers Blitz • Rated</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K5 • Prize: K70</p><p>Zambian Draughts Rules</p><button onclick="joinArena('Checkers Blitz',5,70,'checkers')">Join Arena - K5</button></div>
+  <div class="arena"><h3>🔴 Checkers Classic</h3><p style="color:#fff;opacity:1;font-weight:700">Stake: K10 • Prize: K140</p><p>Best of 3</p><button onclick="joinArena('Checkers Classic',10,140,'checkers')">Join Arena - K10</button></div>
 </div>
 
-<div class="arena" id="arenaBlitz32">
-  <h3>Blitz 3+2 • Rated</h3>
-  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K10 • Prize: K140</p>
-  <p id="blitz32Players">No players yet - Be first to join</p>
-  <button id="btnBlitz32" onclick="joinArena('Blitz 3+2',10,140)">Join Arena - K10</button>
-</div>
-
-<div class="arena" id="arenaBlitz50">
-  <h3>Blitz 5+0 • Rated</h3>
-  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K10 • Prize: K140</p>
-  <p id="blitz50Players">No players yet - Be first to join</p>
-  <button id="btnBlitz50" onclick="joinArena('Blitz 5+0',10,140)">Join Arena - K10</button>
-</div>
-
-<!-- ===== TOURNAMENT TIMELINE + PRIZES - ALSO ALWAYS VISIBLE ===== -->
+<!-- ===== TOURNAMENT TIMELINE ===== -->
 <div class="card">
-  <div style="display:flex;justify-content:space-between;align-items:center">
-    <div style="font-weight:900;font-size:17px">🏆 Zed Gambit Stake Tournament</div>
-    <span style="background:#22c55e;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900">OPEN</span>
-  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center"><div style="font-weight:900;font-size:17px">🏆 Zed Gambit Stake Tournament</div><span style="background:#22c55e;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900">OPEN</span></div>
   <div class="countdown" id="countdown">⏳ Starts in: Loading...</div>
   <div class="timeline">
     <div class="t-step done"><b>1. Registration Opens</b><br><span style="opacity:.8" id="dateRegOpen">Mon 10 Nov, 09:00</span> • ✅ DONE</div>
     <div class="t-step live"><b>2. Registration Closes + Payment Deadline</b><br><span style="opacity:.8" id="dateRegClose">Fri 14 Nov, 18:00</span> • ● LIVE</div>
-    <div class="t-step"><b>3. Tournament Starts</b><br><span style="opacity:.8" id="dateStart">Sat 15 Nov, 14:00</span></div>
+    <div class="t-step"><b>3. Tournament Starts - All Games</b><br><span style="opacity:.8" id="dateStart">Sat 15 Nov, 14:00</span> • Chess + Ludo + Checkers</div>
     <div class="t-step"><b>4. Final + Winners</b><br><span style="opacity:.8" id="dateFinal">Sat 15 Nov, 15:30</span></div>
     <div class="t-step"><b>5. Prizes Paid via MoMo</b><br><span style="opacity:.8" id="datePay">Sat 15 Nov, 17:00</span></div>
   </div>
-  <div style="background:#111827;padding:12px;border-radius:10px">
-    <div style="display:flex;justify-content:space-between"><span>Entry Fee:</span><b style="color:#facc15">K20</b></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥇 1st</span><b>K300</b></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥈 2nd</span><b>K180</b></div>
-    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>🥉 3rd</span><b>K100</b></div>
-  </div>
+  <div style="background:#111827;padding:12px;border-radius:10px"><div style="display:flex;justify-content:space-between"><span>Entry Fee:</span><b style="color:#facc15">K20</b></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥇 1st</span><b>K300</b></div><div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥈 2nd</span><b>K180</b></div><div style="display:flex;justify-content:space-between;padding:6px 0"><span>🥉 3rd</span><b>K100</b></div></div>
 </div>
 
-<!-- ===== GAME BOARD - SHOWS AFTER JOIN, CARDS STAY ABOVE ===== -->
-<div id="gameArea" style="display:none">
-<div style="max-width:420px;margin:10px auto;background:#1f2937;padding:10px;border-radius:12px;text-align:center">
-<div style="font-size:12px;opacity:.7">YOU ARE PLAYING</div>
-<div id="currentArena" style="font-weight:900;font-size:18px;color:#facc15">Bullet 1+0</div>
-<div style="font-size:12px;opacity:.7;margin:8px 0 4px">LEVEL</div>
-<button class="opt" data-level="easy" onclick="setLevel('easy',this)">Easy</button>
-<button class="opt active" data-level="medium" onclick="setLevel('medium',this)">Medium</button>
-<button class="opt" data-level="hard" onclick="setLevel('hard',this)">Hard</button>
-<div id="engineStatus" style="font-size:11px;color:#22c55e;margin-top:6px">● Engine Ready</div>
-</div>
-<div class="player-bar" id="blackBar"><div style="display:flex;gap:8px;align-items:center"><div class="avatar" id="blackAvatar">♞</div><div style="text-align:left"><div style="font-weight:800" id="blackName">Opponent • Black</div><div id="blackCaptured" class="captured"></div></div></div><div class="clock" id="blackClock">1:00</div></div>
-<div id="status">White to move</div>
-<div id="eval" style="font-size:12px;opacity:.8;text-align:center">Eval: +0.2</div>
-<div id="board"></div>
+<!-- ===== GAME AREA - CHESS ===== -->
+<div id="gameAreaChess" style="display:none">
+<div style="max-width:480px;margin:10px auto;background:#1f2937;padding:10px;border-radius:12px;text-align:center"><div style="font-size:12px;opacity:.7">YOU ARE PLAYING</div><div id="currentArena" style="font-weight:900;font-size:18px;color:#facc15">Chess</div><div style="margin-top:8px"><button class="opt" data-level="easy" onclick="setLevel('easy',this)">Easy</button><button class="opt active" data-level="medium" onclick="setLevel('medium',this)">Medium</button><button class="opt" data-level="hard" onclick="setLevel('hard',this)">Hard</button></div></div>
+<div class="player-bar" id="blackBar"><div style="display:flex;gap:8px;align-items:center"><div class="avatar">♞</div><div style="text-align:left"><div style="font-weight:800" id="blackName">Opponent • Black</div><div id="blackCaptured" class="captured"></div></div></div><div class="clock" id="blackClock">1:00</div></div>
+<div id="status">White to move</div><div id="eval" style="font-size:12px;opacity:.8;text-align:center">Eval: +0.2</div><div id="board"></div>
 <div class="player-bar" id="whiteBar"><div style="display:flex;gap:8px;align-items:center"><div class="avatar">😀</div><div style="text-align:left"><div style="font-weight:800" id="whiteName">You • White</div><div id="whiteCaptured" class="captured"></div></div></div><div class="clock" id="whiteClock">1:00</div></div>
-<div style="text-align:center">
-<button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
-<button style="background:#ef4444" onclick="if(confirm('Resign?')) newGame()">🏳️ Resign</button>
-</div>
+<div style="text-align:center"><button style="background:#22c55e" onclick="newGame()">🔄 New Game</button><button style="background:#ef4444" onclick="newGame()">🏳️ Resign</button></div>
 <div class="moves"><b>Moves:</b> <span id="moveList">Game start</span></div>
 <div style="text-align:center"><button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button><button style="background:#0ea5e9" onclick="analyzePosition()">📊 Analyze</button></div>
 </div>
 
+<!-- ===== GAME AREA - LUDO ===== -->
+<div id="gameAreaLudo" style="display:none;max-width:480px;margin:auto;background:#1f2937;padding:14px;border-radius:14px;text-align:center">
+  <div style="font-weight:900;font-size:18px">🎲 Ludo - <span id="ludoArenaName">Quick 2P</span></div>
+  <p style="font-size:13px;opacity:.8">You: <b style="color:#ef4444">🔴 Red</b> • Opponent: <b style="color:#22c55e">🟢 Green</b> • First to 30 wins</p>
+  <div style="display:flex;justify-content:space-between;max-width:320px;margin:auto">
+    <div style="background:#111827;padding:10px;border-radius:10px">🔴 You<br><b id="ludoMyScore" style="font-size:22px">0</b> / 30</div>
+    <div class="dice" id="dice" onclick="rollDice()">🎲</div>
+    <div style="background:#111827;padding:10px;border-radius:10px">🟢 Opponent<br><b id="ludoOppScore" style="font-size:22px">0</b> / 30</div>
+  </div>
+  <div id="ludoStatus" style="margin:10px;font-weight:800;color:#facc15">Your turn - Tap dice!</div>
+  <div style="background:#111827;height:14px;border-radius:10px;overflow:hidden"><div id="ludoProgress" style="height:100%;background:#ef4444;width:0%"></div></div>
+  <button style="background:#ef4444;width:100%;margin-top:12px" onclick="rollDice()">🎲 Roll Dice</button>
+  <button style="background:#374151;width:100%;margin-top:6px" onclick="closeAllGames()">← Back to Games</button>
+</div>
+
+<!-- ===== GAME AREA - CHECKERS ===== -->
+<div id="gameAreaCheckers" style="display:none;max-width:480px;margin:auto;background:#1f2937;padding:14px;border-radius:14px;text-align:center">
+  <div style="font-weight:900;font-size:18px">🔴 Checkers - <span id="checkersArenaName">Blitz</span></div>
+  <p style="font-size:13px;opacity:.8">You: 🔴 Red • Opponent: ⚫ Black • Capture all to win</p>
+  <div id="checkersBoard"></div>
+  <div id="checkersStatus" style="font-weight:800;color:#facc15;margin:8px">Your turn - Tap a red piece</div>
+  <button style="background:#374151;width:100%" onclick="closeAllGames()">← Back to Games</button>
+</div>
+
 <script>
 const REAL = { wK:'https://lichess1.org/assets/piece/cburnett/wK.svg', wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg', wR:'https://lichess1.org/assets/piece/cburnett/wR.svg', wB:'https://lichess1.org/assets/piece/cburnett/wB.svg', wN:'https://lichess1.org/assets/piece/cburnett/wN.svg', wP:'https://lichess1.org/assets/piece/cburnett/wP.svg', bK:'https://lichess1.org/assets/piece/cburnett/bK.svg', bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg', bR:'https://lichess1.org/assets/piece/cburnett/bR.svg', bB:'https://lichess1.org/assets/piece/cburnett/bB.svg', bN:'https://lichess1.org/assets/piece/cburnett/bN.svg', bP:'https://lichess1.org/assets/piece/cburnett/bP.svg' };
-// ===== STATE =====
-let balance = parseInt(localStorage.getItem('zed_balance')||'100');
+let balance=parseInt(localStorage.getItem('zed_balance')||'100');
 let chessVerified=false, momoVerified=false, currentUser=localStorage.getItem('zed_user')||'';
-let currentArena=null, currentStake=0, currentPrize=0;
-function updateBalance(){ document.getElementById('balanceText').textContent='K'+balance; localStorage.setItem('zed_balance', balance); }
+let currentGame='chess', currentStake=0, currentPrize=0;
+function updateBalance(){ document.getElementById('balanceText').textContent='K'+balance; localStorage.setItem('zed_balance',balance); }
 updateBalance();
-if(currentUser){ document.getElementById('chessUsername').value=currentUser; }
+if(currentUser) document.getElementById('chessUsername').value=currentUser;
 
-// ===== STEP 1 - CREATE ACCOUNT =====
-function createChessAccount(){
-  // User goes to create account, then comes back to Step 2
-  // We keep it inside Zed Gambit flow - they don't see the name in UI after
-  window.open('https://lichess.org/signup', '_blank');
-  alert('Step 1: Create your free Chess Account.\n\nThen come back here, enter your new username in Step 2 and tap Verify.');
+// ===== FILTER + OPEN GAME =====
+function filterGames(cat, btn){
+  document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active')); btn.classList.add('active');
+  document.querySelectorAll('.game-card').forEach(c=>{
+    if(cat==='all' || c.dataset.cat===cat) c.style.display='block'; else c.style.display='none';
+  });
 }
+function openGame(game){
+  closeAllGames();
+  currentGame=game;
+  if(game==='chess'){ document.getElementById('arenaGameName').textContent='Chess'; document.getElementById('chessArenas').style.display='block'; document.getElementById('ludoArenas').style.display='none'; document.getElementById('checkersArenas').style.display='none'; document.getElementById('gameAreaChess').style.display='block'; window.scrollTo({top:document.getElementById('gameAreaChess').offsetTop-20,behavior:'smooth'}); }
+  if(game==='ludo'){ document.getElementById('arenaGameName').textContent='Ludo'; document.getElementById('chessArenas').style.display='none'; document.getElementById('ludoArenas').style.display='block'; document.getElementById('checkersArenas').style.display='none'; document.getElementById('gameAreaLudo').style.display='block'; document.getElementById('gameAreaLudo').scrollIntoView({behavior:'smooth'}); }
+  if(game==='checkers'){ document.getElementById('arenaGameName').textContent='Checkers'; document.getElementById('chessArenas').style.display='none'; document.getElementById('ludoArenas').style.display='none'; document.getElementById('checkersArenas').style.display='block'; document.getElementById('gameAreaCheckers').style.display='block'; initCheckers(); document.getElementById('gameAreaCheckers').scrollIntoView({behavior:'smooth'}); }
+  if(['domino','snake','cards','nsolo','dice'].includes(game)){ alert('🚀 '+game.toUpperCase()+' is coming soon to Zed Gambit!\n\nChess, Ludo and Checkers are live now. Join waitlist in WhatsApp group.'); }
+}
+function closeAllGames(){ document.getElementById('gameAreaChess').style.display='none'; document.getElementById('gameAreaLudo').style.display='none'; document.getElementById('gameAreaCheckers').style.display='none'; }
 
-// ===== STEP 2 - VERIFY CHESS USERNAME (hidden check) =====
+// ===== VERIFY - SAME FOR ALL GAMES =====
+function createChessAccount(){ window.open('https://lichess.org/signup','_blank'); alert('Step 1: Create free account.\nThen come back, enter username in Step 2.'); }
 async function verifyUser(){
   let username=document.getElementById('chessUsername').value.trim();
-  if(!username){ alert('Enter your Chess Username'); return; }
+  if(!username){ alert('Enter Chess Username'); return; }
   document.getElementById('verifyResult').innerHTML='Verifying fair-play...';
   try{
     let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username));
     if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Did you create account in Step 1?</div>'; return; }
     let data=await res.json();
-    if(data.disabled || data.tosViolation){
-      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION<br>'+username+' flagged. Deregistered. Cannot play.</div>';
-      let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
-      if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase());
-      localStorage.setItem('zed_banned', JSON.stringify(banned));
-      return;
-    }
+    if(data.disabled || data.tosViolation){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION - Deregistered.</div>'; let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]'); if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase()); localStorage.setItem('zed_banned',JSON.stringify(banned)); return; }
     if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed.</div>'; return; }
-    let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
-    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 Previously deregistered.</div>'; return; }
-    let blitz=data.perfs?.blitz?.rating||'?';
-    chessVerified=true; currentUser=data.username;
-    localStorage.setItem('zed_user', currentUser);
-    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>Now do Step 3 - Mobile Money</div>';
-    document.getElementById('step2Box').classList.add('done');
-    document.getElementById('step3Box').classList.add('active');
-    document.getElementById('whiteName').textContent=data.username+' • White';
+    let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]'); if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 Previously deregistered.</div>'; return; }
+    let blitz=data.perfs?.blitz?.rating||'?'; chessVerified=true; currentUser=data.username; localStorage.setItem('zed_user',currentUser);
+    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>Now Step 3 - Mobile Money</div>';
+    document.getElementById('step2Box').classList.add('done'); document.getElementById('step3Box').classList.add('active'); document.getElementById('whiteName').textContent=data.username+' • White';
     checkAllVerified();
   }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ No internet. Try again.</div>'; }
 }
-
-// ===== STEP 3 - VERIFY MOBILE MONEY =====
 function verifyMomo(){
   let momo=document.getElementById('momoNumber').value.trim();
-  if(!momo || momo.length<10){ alert('Enter valid MoMo number, e.g. 0977 123 456'); return; }
-  if(!chessVerified){ alert('Do Step 2 first - Verify Chess Username'); return; }
-  // Save MoMo - in real version you send K1 test or OTP
-  momoVerified=true;
-  localStorage.setItem('zed_momo', momo);
-  document.getElementById('momoResult').innerHTML='<div class="clean">✅ MOBILE MONEY VERIFIED<br>'+momo+'<br>Winnings will be sent here.</div>';
-  document.getElementById('step3Box').classList.add('done');
-  checkAllVerified();
-  // WhatsApp confirm
-  let msg='Hi Zed Gambit! My Chess Username: '+currentUser+' My MoMo: '+momo+' Please verify me for Arenas.';
-  // Uncomment to auto-open WhatsApp: window.open('https://wa.me/260977123456?text='+encodeURIComponent(msg),'_blank');
+  if(!momo || momo.length<10){ alert('Enter valid MoMo number'); return; }
+  if(!chessVerified){ alert('Do Step 2 first'); return; }
+  momoVerified=true; localStorage.setItem('zed_momo',momo);
+  document.getElementById('momoResult').innerHTML='<div class="clean">✅ MOBILE MONEY VERIFIED<br>'+momo+'<br>Winnings from ANY game go here.</div>';
+  document.getElementById('step3Box').classList.add('done'); checkAllVerified();
 }
-function checkAllVerified(){
-  if(chessVerified && momoVerified){
-    document.getElementById('allVerified').style.display='block';
-    // Enable all Join buttons
-    document.querySelectorAll('.arena button').forEach(b=>b.disabled=false);
-  }
-}
-// Initially lock Join buttons until verified
-document.querySelectorAll('.arena button').forEach(b=>{ b.disabled=false; }); // Keep enabled but check on click
+function checkAllVerified(){ if(chessVerified && momoVerified) document.getElementById('allVerified').style.display='block'; }
 
-// ===== JOIN ARENA - CARDS STAY VISIBLE =====
-function joinArena(arenaName, stake, prize){
-  if(!chessVerified){
-    alert('⚠️ Do Step 2 first: Verify your Chess Username.\n\nScroll up to top.');
-    document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Verify Step 2 first to Join Arena</div>';
-    window.scrollTo({top:0, behavior:'smooth'});
-    return;
-  }
-  if(!momoVerified){
-    alert('⚠️ Do Step 3: Verify Mobile Money to receive winnings.');
-    window.scrollTo({top:0, behavior:'smooth'});
-    return;
-  }
-  if(balance < stake){ alert('❌ Not enough balance. Balance: K'+balance+' Need: K'+stake+'\n\nTop up via MoMo 0977 123 456'); return; }
-  if(!confirm('Join '+arenaName+'?\nStake: K'+stake+' will be deducted.\nPrize if you win: K'+prize+'\n\nConfirm?')) return;
-  balance -= stake; updateBalance();
-  currentArena=arenaName; currentStake=stake; currentPrize=prize;
-  document.getElementById('currentArena').textContent=arenaName+' • Stake K'+stake+' • Prize K'+prize;
-  // Update player count text - cards stay!
-  if(arenaName.includes('1+0')) document.getElementById('bulletPlayers').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
-  if(arenaName.includes('3+2')) document.getElementById('blitz32Players').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
-  if(arenaName.includes('5+0')) document.getElementById('blitz50Players').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
-  // Set clock based on arena
-  if(arenaName.includes('1+0')){ selectedMinutes=1; whiteTime=60; blackTime=60; }
-  if(arenaName.includes('3+2')){ selectedMinutes=3; whiteTime=180; blackTime=180; }
-  if(arenaName.includes('5+0')){ selectedMinutes=5; whiteTime=300; blackTime=300; }
-  document.getElementById('gameArea').style.display='block';
-  document.getElementById('gameArea').scrollIntoView({behavior:'smooth'});
-  newGame();
-  alert('✅ Joined '+arenaName+'! Stake K'+stake+' deducted. Balance: K'+balance+'\n\nYour board is below - Cards are still above, scroll up to see them.');
+// ===== JOIN ARENA - WORKS FOR ALL GAMES =====
+function joinArena(arenaName, stake, prize, game){
+  if(!chessVerified){ alert('⚠️ Do Step 2 first: Verify Username'); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if(!momoVerified){ alert('⚠️ Do Step 3: Verify Mobile Money'); window.scrollTo({top:0,behavior:'smooth'}); return; }
+  if(balance < stake){ alert('❌ Not enough balance. Balance: K'+balance+' Need: K'+stake); return; }
+  if(!confirm('Join '+arenaName+'?\nStake: K'+stake+' deducted.\nPrize: K'+prize+'\nConfirm?')) return;
+  balance-=stake; updateBalance(); currentStake=stake; currentPrize=prize; currentGame=game;
+  if(game==='chess'){ document.getElementById('currentArena').textContent=arenaName; if(arenaName.includes('1+0')){ selectedMinutes=1; whiteTime=60; blackTime=60; } if(arenaName.includes('3+2')){ selectedMinutes=3; whiteTime=180; blackTime=180; } if(arenaName.includes('5+0')){ selectedMinutes=5; whiteTime=300; blackTime=300; } openGame('chess'); newGame(); }
+  if(game==='ludo'){ document.getElementById('ludoArenaName').textContent=arenaName; ludoMy=0; ludoOpp=0; updateLudo(); openGame('ludo'); }
+  if(game==='checkers'){ document.getElementById('checkersArenaName').textContent=arenaName; openGame('checkers'); }
+  alert('✅ Joined '+arenaName+'! Stake K'+stake+' deducted. Balance: K'+balance);
 }
 
 // ===== TIMELINE =====
 let TOURNAMENT={ regOpen:new Date('2026-11-10T09:00:00'), regClose:new Date('2026-11-14T18:00:00'), start:new Date('2026-11-15T14:00:00'), final:new Date('2026-11-15T15:30:00'), pay:new Date('2026-11-15T17:00:00') };
-function updateTimeline(){
-  let now=new Date(); let cd=document.getElementById('countdown');
-  if(now < TOURNAMENT.start){ let diff=TOURNAMENT.start-now; let d=Math.floor(diff/(1000*60*60*24)), h=Math.floor(diff/(1000*60*60)%24), m=Math.floor(diff/(1000*60)%60); cd.textContent='⏳ Tournament Starts in: '+d+'d '+h+'h '+m+'m'; }
-  else cd.textContent='🔴 Tournament LIVE';
-  let fmt=(d)=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
-  document.getElementById('dateRegOpen').textContent=fmt(TOURNAMENT.regOpen);
-  document.getElementById('dateRegClose').textContent=fmt(TOURNAMENT.regClose);
-  document.getElementById('dateStart').textContent=fmt(TOURNAMENT.start);
-  document.getElementById('dateFinal').textContent=fmt(TOURNAMENT.final);
-  document.getElementById('datePay').textContent=fmt(TOURNAMENT.pay);
-}
+function updateTimeline(){ let now=new Date(); let cd=document.getElementById('countdown'); if(now < TOURNAMENT.start){ let diff=TOURNAMENT.start-now; let d=Math.floor(diff/(1000*60*60*24)), h=Math.floor(diff/(1000*60*60)%24), m=Math.floor(diff/(1000*60)%60); cd.textContent='⏳ Tournament Starts in: '+d+'d '+h+'h '+m+'m'; } else cd.textContent='🔴 Tournament LIVE'; let fmt=(d)=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); document.getElementById('dateRegOpen').textContent=fmt(TOURNAMENT.regOpen); document.getElementById('dateRegClose').textContent=fmt(TOURNAMENT.regClose); document.getElementById('dateStart').textContent=fmt(TOURNAMENT.start); document.getElementById('dateFinal').textContent=fmt(TOURNAMENT.final); document.getElementById('datePay').textContent=fmt(TOURNAMENT.pay); }
 updateTimeline();
 
-// ===== ENGINE + GAME =====
+// ===== LUDO LOGIC - SIMPLE 2 PLAYER =====
+let ludoMy=0, ludoOpp=0, ludoTurn='me';
+function updateLudo(){ document.getElementById('ludoMyScore').textContent=ludoMy; document.getElementById('ludoOppScore').textContent=ludoOpp; document.getElementById('ludoProgress').style.width=(ludoMy/30*100)+'%'; }
+function rollDice(){
+  if(ludoTurn!=='me') return;
+  let roll=Math.floor(Math.random()*6)+1; document.getElementById('dice').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅'];
+  ludoMy+=roll; if(ludoMy>=30){ ludoMy=30; updateLudo(); balance+=currentPrize; updateBalance(); document.getElementById('ludoStatus').textContent='🏆 YOU WIN! Prize K'+currentPrize+' added! Balance: K'+balance; return; }
+  document.getElementById('ludoStatus').textContent='You rolled '+roll+' • You: '+ludoMy+' / Opponent turn...'; updateLudo(); ludoTurn='opp';
+  setTimeout(()=>{ let oppRoll=Math.floor(Math.random()*6)+1; ludoOpp+=oppRoll; if(ludoOpp>=30){ ludoOpp=30; updateLudo(); document.getElementById('ludoStatus').textContent='😔 Opponent won. Stake lost.'; return; } document.getElementById('ludoStatus').textContent='Opponent rolled '+oppRoll+' • Opponent: '+ludoOpp+' • Your turn!'; updateLudo(); ludoTurn='me'; },1000);
+}
+
+// ===== CHECKERS LOGIC - SIMPLE =====
+let checkersBoard=[], checkersSelected=null;
+function initCheckers(){
+  checkersBoard=[]; for(let r=0;r<8;r++){ checkersBoard[r]=[]; for(let c=0;c<8;c++){ if((r+c)%2===1 && r<3) checkersBoard[r][c]='b'; else if((r+c)%2===1 && r>4) checkersBoard[r][c]='r'; else checkersBoard[r][c]=null; } }
+  checkersSelected=null; renderCheckers(); document.getElementById('checkersStatus').textContent='Your turn - Tap a red piece';
+}
+function renderCheckers(){
+  let b=document.getElementById('checkersBoard'); b.innerHTML='';
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    let d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); if(checkersSelected && checkersSelected[0]===r && checkersSelected[1]===c) d.classList.add('selected');
+    let p=checkersBoard[r][c]; if(p){ let s=document.createElement('div'); s.style.width='78%'; s.style.height='78%'; s.style.borderRadius='50%'; s.style.background=p==='r'?'#ef4444':'#111827'; s.style.border='3px solid #fff'; s.style.boxShadow='0 2px 4px rgba(0,0,0,.5)'; d.appendChild(s); }
+    d.onclick=()=>clickChecker(r,c); b.appendChild(d);
+  }
+}
+function clickChecker(r,c){
+  if(checkersSelected){
+    let [sr,sc]=checkersSelected; let p=checkersBoard[sr][sc];
+    // Simple move: 1 step diagonal forward, or capture 2 steps
+    if(Math.abs(r-sr)===1 && Math.abs(c-sc)===1 && !checkersBoard[r][c] && p==='r' && r<sr){ checkersBoard[r][c]=p; checkersBoard[sr][sc]=null; checkersSelected=null; renderCheckers(); checkCheckersWin(); setTimeout(opponentChecker,600); return; }
+    if(Math.abs(r-sr)===2 && Math.abs(c-sc)===2 && !checkersBoard[r][c]){ let mr=(r+sr)/2, mc=(c+sc)/2; if(checkersBoard[mr][mc]==='b'){ checkersBoard[mr][mc]=null; checkersBoard[r][c]=p; checkersBoard[sr][sc]=null; checkersSelected=null; renderCheckers(); checkCheckersWin(); setTimeout(opponentChecker,600); return; } }
+  }
+  if(checkersBoard[r][c]==='r'){ checkersSelected=[r,c]; renderCheckers(); }
+}
+function opponentChecker(){
+  // Simple AI: find first black move
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++) if(checkersBoard[r][c]==='b'){
+    let moves=[[1,-1],[1,1]]; for(let [dr,dc] of moves){ let nr=r+dr, nc=c+dc; if(nr<8 && nc>=0 && nc<8 && !checkersBoard[nr][nc]){ checkersBoard[nr][nc]='b'; checkersBoard[r][c]=null; renderCheckers(); document.getElementById('checkersStatus').textContent='Your turn - Tap a red piece'; return; } }
+    // Capture
+    for(let [dr,dc] of moves){ let nr=r+dr*2, nc=c+dc*2, mr=r+dr, mc=c+dc; if(nr<8 && nc>=0 && nc<8 && !checkersBoard[nr][nc] && checkersBoard[mr][mc]==='r'){ checkersBoard[mr][mc]=null; checkersBoard[nr][nc]='b'; checkersBoard[r][c]=null; renderCheckers(); return; } }
+  }
+}
+function checkCheckersWin(){
+  let reds=0, blacks=0; checkersBoard.forEach(row=>row.forEach(p=>{ if(p==='r') reds++; if(p==='b') blacks++; }));
+  if(blacks===0){ document.getElementById('checkersStatus').textContent='🏆 YOU WIN! Prize K'+currentPrize+' added!'; balance+=currentPrize; updateBalance(); }
+  if(reds===0) document.getElementById('checkersStatus').textContent='😔 You lost. Stake gone.';
+}
+
+// ===== CHESS ENGINE =====
 let engine=null, engineReady=false, stockfishLevel='medium';
 let levelSettings={easy:{depth:4,skill:2},medium:{depth:10,skill:10},hard:{depth:16,skill:20}};
-try{ engine=STOCKFISH(); engine.onmessage=function(e){ let line=typeof e==='string'?e:e.data; if(line.includes('uciok')){ engineReady=true; } if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; if(best && best!=='(none)') stockfishMove(best); } if(line.includes('info depth') && line.includes('score cp')){ let m=line.match(/score cp (-?\d+)/); if(m){ let cp=parseInt(m[1]); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1); } } }; engine.postMessage('uci'); engine.postMessage('setoption name Skill Level value 10'); }catch(e){}
+try{ engine=STOCKFISH(); engine.onmessage=function(e){ let line=typeof e==='string'?e:e.data; if(line.includes('uciok')) engineReady=true; if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; if(best && best!=='(none)') stockfishMove(best); } if(line.includes('info depth') && line.includes('score cp')){ let m=line.match(/score cp (-?\d+)/); if(m){ let cp=parseInt(m[1]); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1); } } }; engine.postMessage('uci'); engine.postMessage('setoption name Skill Level value 10'); }catch(e){}
 function setLevel(lvl,btn){ stockfishLevel=lvl; document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); if(engine) engine.postMessage('setoption name Skill Level value '+levelSettings[lvl].skill); }
 let game=new Chess(), selected=null, legalMoves=[], lastMove=null, selectedMinutes=1, whiteTime=60, blackTime=60, timer=null, mode='computer', gameOver=false, thinking=false;
 function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 function updateClocks(){ document.getElementById('whiteClock').textContent=fmt(whiteTime); document.getElementById('blackClock').textContent=fmt(blackTime); let turn=game.turn(); document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':''); document.getElementById('blackClock').className='clock'+(turn==='b'?' active':''); document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':''); document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':''); let hist=game.history({verbose:true}); let wCap=[],bCap=[]; const SYM={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'}; hist.forEach(m=>{if(m.captured){if(m.color==='w')wCap.push(SYM[m.captured.toUpperCase()]);else bCap.push(SYM[m.captured]);}}); document.getElementById('whiteCaptured').textContent=wCap.join(' '); document.getElementById('blackCaptured').textContent=bCap.join(' '); }
 function startTimer(){ clearInterval(timer); timer=setInterval(()=>{ if(gameOver)return; if(game.turn()==='w'){whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');}} else{blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');}} updateClocks(); },1000); }
 function squareName(r,c){ return 'abcdefgh'[c]+(8-r); }
-function render(){ const b=document.getElementById('board'); b.innerHTML=''; const board=game.board(); const files=['a','b','c','d','e','f','g','h']; let inCheck=game.in_check(); let kingSquare=null; if(inCheck){ let turn=game.turn(); for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); } } for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); let sq=squareName(r,c); if(selected===sq) d.classList.add('selected'); if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove'); if(kingSquare===sq) d.classList.add('check'); let lm=legalMoves.find(m=>m.to===sq); if(lm) d.classList.add(lm.captured?'legal-capture':'legal'); if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);} if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);} const p=board[r][c]; if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; d.appendChild(img); } d.onclick=()=>clickSquare(sq); b.appendChild(d); } let status=''; if(game.in_checkmate()) status=game.turn()==='w'?'Checkmate! Black wins 🏆':'Checkmate! You win 🏆'; else if(game.in_draw()) status='Draw! 🤝'; else if(game.in_stalemate()) status='Stalemate! 🤝'; else if(game.in_check()) status=(game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️'; else status=(game.turn()==='w'?'White':'Black')+' to move'; document.getElementById('status').textContent=status; document.getElementById('moveList').textContent=game.history().length?game.history().join(' '):'Game start'; updateClocks(); }
+function render(){ const b=document.getElementById('board'); b.innerHTML=''; const board=game.board(); const files=['a','b','c','d','e','f','g','h']; let inCheck=game.in_check(); let kingSquare=null; if(inCheck){ let turn=game.turn(); for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); } } for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); let sq=squareName(r,c); if(selected===sq) d.classList.add('selected'); if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove'); if(kingSquare===sq) d.classList.add('check'); let lm=legalMoves.find(m=>m.to===sq); if(lm) d.classList.add('legal'); if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);} if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);} const p=board[r][c]; if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; d.appendChild(img); } d.onclick=()=>clickSquare(sq); b.appendChild(d); } let status=''; if(game.in_checkmate()) status=game.turn()==='w'?'Checkmate! Black wins 🏆':'Checkmate! You win 🏆'; else if(game.in_draw()) status='Draw! 🤝'; else if(game.in_stalemate()) status='Stalemate! 🤝'; else if(game.in_check()) status=(game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️'; else status=(game.turn()==='w'?'White':'Black')+' to move'; document.getElementById('status').textContent=status; document.getElementById('moveList').textContent=game.history().length?game.history().join(' '):'Game start'; updateClocks(); }
 function clickSquare(sq){ if(gameOver||thinking)return; if(mode==='computer' && game.turn()==='b')return; let move=legalMoves.find(m=>m.to===sq); if(selected && move){ doMove(selected,sq); return; } let piece=game.get(sq); if(piece && piece.color===game.turn()){ selected=sq; legalMoves=game.moves({square:sq,verbose:true}); render(); return; } selected=null; legalMoves=[]; render(); }
-function doMove(from,to){ let piece=game.get(from); let promotion=(piece && piece.type==='p' && (to[1]==='8'||to[1]==='1'))?'q':undefined; let m=game.move({from,to,promotion}); if(!m){selected=null;legalMoves=[];render();return;} lastMove=m; selected=null; legalMoves=[]; if(game.in_checkmate()||game.in_draw()||game.in_stalemate()){ gameOver=true; clearInterval(timer); if(game.in_checkmate() && game.turn()==='w'){ // You lost, stake gone
-        setTimeout(()=>alert('Checkmate! You lost. Stake K'+currentStake+' gone.'),300);
-      } else if(game.in_checkmate() && game.turn()==='b'){ balance+=currentPrize; updateBalance(); setTimeout(()=>alert('🏆 YOU WIN! Prize K'+currentPrize+' added! Balance: K'+balance),300); }
-      else setTimeout(()=>alert('Draw! Stake refunded.'),300); } render(); if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink(); }
+function doMove(from,to){ let piece=game.get(from); let promotion=(piece && piece.type==='p' && (to[1]==='8'||to[1]==='1'))?'q':undefined; let m=game.move({from,to,promotion}); if(!m){selected=null;legalMoves=[];render();return;} lastMove=m; selected=null; legalMoves=[]; if(game.in_checkmate()||game.in_draw()||game.in_stalemate()){ gameOver=true; clearInterval(timer); if(game.in_checkmate() && game.turn()==='b'){ balance+=currentPrize; updateBalance(); setTimeout(()=>alert('🏆 YOU WIN! Prize K'+currentPrize+' added! Balance: K'+balance),300); } else if(game.in_checkmate()) setTimeout(()=>alert('You lost. Stake K'+currentStake+' gone.'),300); else setTimeout(()=>alert('Draw!'),300); } render(); if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink(); }
 function stockfishMove(best){ thinking=false; let from=best.substring(0,2), to=best.substring(2,4); doMove(from,to); }
 function stockfishThink(){ thinking=true; document.getElementById('status').textContent='Opponent thinking...'; if(!engine||!engineReady){ setTimeout(()=>{ let moves=game.moves({verbose:true}); if(moves.length){ let pick=moves[Math.floor(Math.random()*moves.length)]; thinking=false; doMove(pick.from,pick.to); } },800); return; } engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth '+levelSettings[stockfishLevel].depth); }
 function getHint(){ if(gameOver)return; if(engine&&engineReady){ let temp=engine.onmessage; engine.onmessage=function(e){ let line=typeof e==='string'?e:e.data; if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; alert('💡 Best move: '+best); engine.onmessage=temp; } }; engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 12'); } }
