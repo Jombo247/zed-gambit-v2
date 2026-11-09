@@ -128,6 +128,25 @@ function fixLoggedOut() {
 }
 setInterval(fixLoggedOut, 1000);
 fixLoggedOut();
+// Gate Wallet + Rated Games behind verification
+function gateVerified(){
+  const verified = localStorage.getItem('zg_verified') === 'yes';
+  if(verified) return;
+  // Block Wallet button if not verified
+  document.querySelectorAll('button').forEach(btn=>{
+    const t = btn.textContent.toLowerCase();
+    if(t.includes('wallet') || t.includes('rated') || t.includes('tournament')){
+      btn.onclick = () => { alert('Please Register + Verify Email & Phone first to unlock Wallet & Rated Games'); location.href='/register.html'; };
+    }
+  });
+  // Add Register link if on login screen
+  if(document.body.innerText.includes('Player Account') && !document.getElementById('zg-reg-link')){
+    const a=document.createElement('a'); a.id='zg-reg-link'; a.href='/register.html'; a.innerText='Register with Email + Phone Verification'; a.style.cssText='display:block;background:#22c55e;color:#fff;padding:12px;text-align:center;border-radius:10px;margin:10px 0;text-decoration:none;font-weight:700';
+    document.body.prepend(a);
+  }
+}
+setInterval(gateVerified, 1000);
+
 
 
 
