@@ -146,6 +146,29 @@ function gateVerified(){
   }
 }
 setInterval(gateVerified, 1000);
+// GATE: Email = Free Arena, Phone = Wallet + Rated + Tournaments
+function gatePhone(){
+  const emailOk = localStorage.getItem('zg_email_verified')==='yes';
+  const phoneOk = localStorage.getItem('zg_phone_verified')==='yes';
+  // Show Verify Phone banner if email ok but phone not
+  if(emailOk && !phoneOk && !document.getElementById('zg-phone-banner')){
+    const b=document.createElement('a'); b.id='zg-phone-banner'; b.href='/verify-phone.html';
+    b.innerText='⚠️ Verify Phone to Unlock Wallet + Tournaments →';
+    b.style.cssText='display:block;background:#f59e0b;color:#000;padding:12px;text-align:center;border-radius:10px;margin:10px;font-weight:700;text-decoration:none';
+    document.body.prepend(b);
+  }
+  if(phoneOk) return;
+  document.querySelectorAll('button').forEach(btn=>{
+    const t=btn.textContent.toLowerCase();
+    if(t.includes('wallet') || t.includes('tournament') || t.includes('rated') || t.includes('auto stake')){
+      btn.onclick=()=>{ 
+        if(!emailOk){ alert('Please Register with Email first'); location.href='/register.html'; }
+        else { alert('Verify your Phone Number first to use Wallet / Tournaments'); location.href='/verify-phone.html'; }
+      };
+    }
+  });
+}
+setInterval(gatePhone, 1000);
 
 
 
