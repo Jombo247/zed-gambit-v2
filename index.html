@@ -49,20 +49,21 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 .t-step::before{content:'';position:absolute;left:-19px;top:3px;width:12px;height:12px;border-radius:50%;background:#22c55e}
 .countdown{background:#000;padding:10px;border-radius:10px;text-align:center;font-weight:900;color:#facc15}
 .dice{width:70px;height:70px;background:#fff;color:#000;font-size:38px;font-weight:900;border-radius:14px;display:flex;align-items:center;justify-content:center;margin:auto;cursor:pointer}
+.mode-card{background:#1f2937;padding:16px;border-radius:14px;margin:10px 0;text-align:left}
+.mode-card.active{outline:2px solid #facc15}
+.link-box{background:#000;padding:12px;border-radius:10px;word-break:break-all;font-size:12px;margin:8px 0}
+.guest-banner{background:#fef3c7;color:#000;padding:10px;border-radius:10px;font-size:13px;text-align:center;margin:10px 0}
 </style>
 </head>
 <body>
 
 <div class="topbar"><div style="font-weight:900;font-size:20px">♞ ZED GAMBIT</div><div class="balance">Balance: <b id="balanceText">K100</b></div></div>
 
-<!-- ===== PAGE 1: HOME ===== -->
+<!-- ===== HOME ===== -->
 <div id="page-home" class="page active">
   <h2 style="text-align:center">Welcome to Zed Gambit 🇿🇲</h2>
   <p style="text-align:center;font-size:13px;opacity:.7">Zambia's Games Platform • One Balance for All Games</p>
-  <div class="card" style="text-align:center">
-    <div style="font-size:40px">🏆</div><b>Next Tournament</b><br>Sat 15 Nov, 14:00 • Entry K20 • Prize K300<br>
-    <button style="background:#facc15;color:#000;width:100%;margin-top:8px" onclick="showPage('tournament')">View Tournament →</button>
-  </div>
+  <div class="card" style="text-align:center"><div style="font-size:40px">🏆</div><b>Next Tournament</b><br>Sat 15 Nov, 14:00 • Entry K20 • Prize K300<br><button style="background:#facc15;color:#000;width:100%;margin-top:8px" onclick="showPage('tournament')">View Tournament →</button></div>
   <h3>🔥 Popular Now</h3>
   <div class="game-grid">
     <div class="game-card" onclick="openGame('chess')"><div class="emoji">♞</div><h3>Chess</h3><p>124 online</p><button>Play →</button></div>
@@ -70,10 +71,13 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
     <div class="game-card" onclick="openGame('checkers')"><div class="emoji">🔴</div><h3>Checkers</h3><p>67 online</p><button>Play →</button></div>
     <div class="game-card" onclick="showPage('games')"><div class="emoji">🎮</div><h3>All Games</h3><p>8 games</p><button>View All →</button></div>
   </div>
-  <div class="card"><b>✅ Your Status</b><div id="homeStatus" style="font-size:13px;margin-top:6px">Not verified yet - Go to Profile to verify</div><button style="background:#2563eb;width:100%;margin-top:8px" onclick="showPage('profile')">Verify Now →</button></div>
+  <div class="card"><b>✅ Your Status</b><div id="homeStatus" style="font-size:13px;margin-top:6px">Guest - Play free without registering. Verify to play for money.</div><button style="background:#2563eb;width:100%;margin-top:8px" onclick="showPage('profile')">Verify to Play for Money →</button></div>
+  <!-- GUEST PLAY - NOT REGISTERED CAN PLAY -->
+  <div class="guest-banner">👋 <b>Not registered?</b> No problem! Tap Play below and choose <b>Play as Guest</b> - play Chess, Ludo, Checkers free, no account needed.</div>
+  <button style="background:#22c55e;width:100%;padding:14px;font-size:16px" onclick="playAsGuest()">▶️ Play as Guest - No Registration</button>
 </div>
 
-<!-- ===== PAGE 2: GAMES ===== -->
+<!-- ===== GAMES ===== -->
 <div id="page-games" class="page">
   <h2>🎮 All Games</h2>
   <div class="game-grid">
@@ -88,13 +92,61 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
   </div>
 </div>
 
-<!-- ===== PAGE 3: PLAY / ARENAS ===== -->
+<!-- ===== PLAY - NEW: COMPUTER vs OPPONENT + LINK + GUEST ===== -->
 <div id="page-play" class="page">
-  <h2 id="arenaTitle">RATED ARENAS - <span id="arenaGameName">Chess</span></h2>
+  <h2>♟️ Play - <span id="arenaGameName">Chess</span></h2>
+
+  <!-- CHOOSE GAME TYPE -->
+  <div style="display:flex;gap:6px">
+    <button style="flex:1;background:#1f2937" onclick="openGame('chess')">♞ Chess</button>
+    <button style="flex:1;background:#1f2937" onclick="openGame('ludo')">🎲 Ludo</button>
+    <button style="flex:1;background:#1f2937" onclick="openGame('checkers')">🔴 Checkers</button>
+  </div>
+
+  <!-- MODE 1: VS COMPUTER -->
+  <div class="mode-card" id="modeComputerCard">
+    <div style="font-weight:900;font-size:17px">🤖 Play with Computer</div>
+    <div style="font-size:13px;opacity:.8">Play instantly. No link, no waiting. Perfect for practice. Guest can play.</div>
+    <div style="margin:8px 0"><span style="font-size:12px">Level:</span> <button class="opt" data-level="easy" onclick="setLevel('easy',this)">Easy</button><button class="opt active" data-level="medium" onclick="setLevel('medium',this)">Medium</button><button class="opt" data-level="hard" onclick="setLevel('hard',this)">Hard</button></div>
+    <div style="margin:8px 0"><span style="font-size:12px">Time:</span> <button class="opt" onclick="setTimeQuick(1,this)">1 min</button><button class="opt" onclick="setTimeQuick(3,this)">3 min</button><button class="opt" onclick="setTimeQuick(5,this)">5 min</button><button class="opt active" onclick="setTimeQuick(10,this)">10 min</button></div>
+    <button style="background:#22c55e;width:100%;padding:14px;font-size:16px" onclick="playVsComputer()">▶️ Play vs Computer</button>
+  </div>
+
+  <!-- MODE 2: VS OPPONENT - LINK INSIDE SITE -->
+  <div class="mode-card" id="modeFriendCard">
+    <div style="font-weight:900;font-size:17px">👥 Play with Opponent / Friend</div>
+    <div style="font-size:13px;opacity:.8">Create a link INSIDE Zed Gambit. Send it to your friend. They tap link, they join your game - even if they are not registered (Guest).</div>
+    <div id="roomArea">
+      <button style="background:#3b82f6;width:100%;padding:14px;font-size:16px" onclick="createRoom()">🔗 Create Game Link</button>
+      <div style="font-size:12px;text-align:center;margin-top:6px">Free Play = No verification needed • Stake Play = Both must verify</div>
+    </div>
+    <div id="roomCreated" style="display:none">
+      <div style="background:#dcfce7;color:#166534;padding:10px;border-radius:10px;font-weight:800;text-align:center">✅ Your Game Link is Ready!</div>
+      <div class="link-box" id="roomLinkText">https://zedgambit.com/play?room=...</div>
+      <button style="background:#fff;color:#000;width:100%" onclick="copyRoomLink()">📋 Copy Link</button>
+      <button style="background:#25D366;width:100%;margin-top:6px" onclick="shareRoomWhatsApp()">💬 Send Link on WhatsApp</button>
+      <button style="background:#facc15;color:#000;width:100%;margin-top:6px" onclick="shareRoomInside()">📨 Send Link Inside Zed Gambit</button>
+      <div id="roomStatus" style="font-size:13px;margin-top:8px;text-align:center">⏳ Waiting for opponent to join link...</div>
+      <button style="background:#22c55e;width:100%;margin-top:8px" onclick="startFriendGame()">▶️ Start Game Now (2 Players on Same Phone)</button>
+      <button style="background:#374151;width:100%;margin-top:6px" onclick="cancelRoom()">Cancel Link</button>
+    </div>
+    <!-- JOIN VIA LINK -->
+    <div style="margin-top:12px;border-top:1px solid #374151;padding-top:10px">
+      <b style="font-size:13px">Got a link from a friend?</b><br>
+      <input id="joinRoomInput" placeholder="Paste Room Code, e.g. ZG-1234 or full link" style="width:100%;padding:12px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;margin:6px 0;color:#000">
+      <button style="background:#8b5cf6;width:100%" onclick="joinRoomByCode()">Join Friend's Game</button>
+    </div>
+  </div>
+
+  <!-- GUEST PLAY -->
+  <div class="guest-banner">👋 <b>Not registered?</b> You can still play! Tap <b>Play as Guest</b> below - no account, no MoMo needed for FREE games.</div>
+  <button style="background:#facc15;color:#000;width:100%;padding:12px" onclick="playAsGuest()">👋 Play as Guest - Free</button>
+
+  <!-- STAKE ARENAS - ONLY FOR VERIFIED -->
+  <h3 style="margin-top:16px">💰 Stake Arenas - Verified Only</h3>
   <div id="chessArenas">
-    <div class="arena"><h3>Bullet 1+0 • Rated</h3><p>Stake: K5 • Prize: K70</p><p id="bulletPlayers">No players yet - Be first</p><button onclick="joinArena('Chess Bullet 1+0',5,70,'chess')">Join Arena - K5</button></div>
+    <div class="arena"><h3>Bullet 1+0 • Rated</h3><p>Stake: K5 • Prize: K70</p><button onclick="joinArena('Chess Bullet 1+0',5,70,'chess')">Join Arena - K5</button></div>
     <div class="arena"><h3>Blitz 3+2 • Rated</h3><p>Stake: K10 • Prize: K140</p><button onclick="joinArena('Chess Blitz 3+2',10,140,'chess')">Join Arena - K10</button></div>
-    <div class="arena"><h3>Blitz 5+0 • Rated</h3><p>Stake: K10 • Prize: K140</p><button onclick="joinArena('Chess Blitz 5+0',10,140,'chess')">Join Arena - K10</button></div>
   </div>
   <div id="ludoArenas" style="display:none">
     <div class="arena"><h3>🎲 Ludo Quick • 2 Players</h3><p>Stake: K5 • Prize: K70</p><button onclick="joinArena('Ludo Quick 2P',5,70,'ludo')">Join Arena - K5</button></div>
@@ -102,70 +154,52 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
   </div>
   <div id="checkersArenas" style="display:none">
     <div class="arena"><h3>🔴 Checkers Blitz</h3><p>Stake: K5 • Prize: K70</p><button onclick="joinArena('Checkers Blitz',5,70,'checkers')">Join Arena - K5</button></div>
-    <div class="arena"><h3>🔴 Checkers Classic</h3><p>Stake: K10 • Prize: K140</p><button onclick="joinArena('Checkers Classic',10,140,'checkers')">Join Arena - K10</button></div>
   </div>
 
-  <!-- CHESS BOARD - ONLY ON PLAY PAGE -->
+  <!-- BOARDS -->
   <div id="gameAreaChess" style="display:none">
-    <div style="text-align:center"><div style="font-size:12px;opacity:.7">YOU ARE PLAYING</div><div id="currentArena" style="font-weight:900;color:#facc15">Chess</div></div>
-    <div class="player-bar"><div>♞ <b id="blackName">Opponent • Black</b></div><div class="clock" id="blackClock">1:00</div></div>
+    <div style="text-align:center"><div id="currentArena" style="font-weight:900;color:#facc15">Chess</div><div id="gameModeLabel" style="font-size:12px;opacity:.7">vs Computer</div></div>
+    <div class="player-bar"><div>♞ <b id="blackName">Opponent • Black</b></div><div class="clock" id="blackClock">10:00</div></div>
     <div id="status">White to move</div><div id="eval" style="text-align:center;font-size:12px">Eval: +0.2</div><div id="board"></div>
-    <div class="player-bar"><div>😀 <b id="whiteName">You • White</b></div><div class="clock" id="whiteClock">1:00</div></div>
-    <div style="text-align:center"><button style="background:#22c55e" onclick="newGame()">🔄 New Game</button><button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button></div>
+    <div class="player-bar"><div>😀 <b id="whiteName">You • White</b></div><div class="clock" id="whiteClock">10:00</div></div>
+    <div style="text-align:center"><button style="background:#22c55e" onclick="newGame()">🔄 New Game</button><button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button><button style="background:#ef4444" onclick="inviteOpponent()">🔗 Invite Opponent</button></div>
     <div class="moves"><b>Moves:</b> <span id="moveList">Game start</span></div>
   </div>
-  <!-- LUDO -->
   <div id="gameAreaLudo" style="display:none;background:#1f2937;padding:14px;border-radius:14px;text-align:center">
     <div style="font-weight:900">🎲 Ludo - <span id="ludoArenaName">Quick</span></div>
     <div style="display:flex;justify-content:space-between;max-width:320px;margin:10px auto"><div>🔴 You<br><b id="ludoMyScore" style="font-size:22px">0</b></div><div class="dice" id="dice" onclick="rollDice()">🎲</div><div>🟢 Opp<br><b id="ludoOppScore" style="font-size:22px">0</b></div></div>
     <div id="ludoStatus" style="font-weight:800;color:#facc15">Your turn - Tap dice!</div>
     <button style="background:#ef4444;width:100%;margin-top:10px" onclick="rollDice()">🎲 Roll Dice</button>
+    <button style="background:#3b82f6;width:100%;margin-top:6px" onclick="createRoom()">🔗 Invite Opponent with Link</button>
   </div>
-  <!-- CHECKERS -->
   <div id="gameAreaCheckers" style="display:none;background:#1f2937;padding:14px;border-radius:14px;text-align:center">
     <div style="font-weight:900">🔴 Checkers</div><div id="checkersBoard"></div><div id="checkersStatus" style="font-weight:800;color:#facc15;margin:8px">Your turn</div>
+    <button style="background:#3b82f6;width:100%" onclick="createRoom()">🔗 Invite Opponent</button>
   </div>
 </div>
 
-<!-- ===== PAGE 4: TOURNAMENT ===== -->
+<!-- ===== TOURNAMENT ===== -->
 <div id="page-tournament" class="page">
   <h2>🏆 Stake Tournament</h2>
   <div class="countdown" id="countdown">⏳ Starts in: Loading...</div>
-  <div class="card">
-    <div class="timeline">
-      <div class="t-step"><b>1. Registration Opens</b><br><span id="dateRegOpen">Mon 10 Nov, 09:00</span> ✅ DONE</div>
-      <div class="t-step"><b>2. Registration Closes</b><br><span id="dateRegClose">Fri 14 Nov, 18:00</span> ● LIVE</div>
-      <div class="t-step"><b>3. Tournament Starts - All Games</b><br><span id="dateStart">Sat 15 Nov, 14:00</span></div>
-      <div class="t-step"><b>4. Final + Winners</b><br><span id="dateFinal">Sat 15 Nov, 15:30</span></div>
-      <div class="t-step"><b>5. Prizes Paid via MoMo</b><br><span id="datePay">Sat 15 Nov, 17:00</span></div>
-    </div>
-  </div>
-  <div class="card"><b>💰 Prizes</b><br>Entry: K20<br>🥇 1st: K300<br>🥈 2nd: K180<br>🥉 3rd: K100<br>4th: K60</div>
-  <div class="card"><b>📱 Pay Entry</b><br>MoMo: 0977 123 456<br>Ref: Your Username<br><button style="background:#25D366;width:100%;margin-top:8px" onclick="payWhatsApp()">💬 Confirm on WhatsApp</button></div>
+  <div class="card"><div class="timeline"><div class="t-step"><b>1. Registration Opens</b><br><span id="dateRegOpen">Mon 10 Nov, 09:00</span> ✅ DONE</div><div class="t-step"><b>2. Registration Closes</b><br><span id="dateRegClose">Fri 14 Nov, 18:00</span> ● LIVE</div><div class="t-step"><b>3. Tournament Starts - All Games</b><br><span id="dateStart">Sat 15 Nov, 14:00</span></div><div class="t-step"><b>4. Final + Winners</b><br><span id="dateFinal">Sat 15 Nov, 15:30</span></div><div class="t-step"><b>5. Prizes Paid via MoMo</b><br><span id="datePay">Sat 15 Nov, 17:00</span></div></div></div>
+  <div class="card"><b>💰 Prizes</b><br>Entry: K20<br>🥇 1st: K300<br>🥈 2nd: K180<br>🥉 3rd: K100</div>
 </div>
 
-<!-- ===== PAGE 5: PROFILE / VERIFY / WALLET ===== -->
+<!-- ===== PROFILE ===== -->
 <div id="page-profile" class="page">
   <h2>👤 My Profile</h2>
-  <div class="card"><b>Balance: <span id="balanceText2">K100</span></b><br><span style="font-size:12px">Winnings from Chess, Ludo, Checkers all go here</span><br><button style="background:#22c55e;width:100%;margin-top:8px" onclick="alert('Top up via MoMo 0977 123 456')">+ Top Up</button><button style="background:#3b82f6;width:100%;margin-top:6px" onclick="alert('Withdraw via WhatsApp 0977 123 456')">Withdraw</button></div>
+  <div class="card"><b>Balance: <span id="balanceText2">K100</span></b><br><span style="font-size:12px" id="profileUser">Guest - Play free, no account</span><br><button style="background:#22c55e;width:100%;margin-top:8px" onclick="alert('Top up via MoMo 0977 123 456')">+ Top Up</button><button style="background:#3b82f6;width:100%;margin-top:6px" onclick="alert('Withdraw via WhatsApp')">Withdraw</button></div>
   <div class="verify-box">
-    <div style="font-weight:900">✅ Verify - One Time for All Games</div>
-    <p style="font-size:12px">Step 1: Create Chess Account</p>
-    <button style="background:#2563eb;width:100%" onclick="createChessAccount()">+ Create Free Account</button>
-    <p style="font-size:12px;margin-top:10px">Step 2: Verify Username</p>
-    <input id="chessUsername" placeholder="e.g. Pazed200">
-    <button style="background:#111827;width:100%" onclick="verifyUser()">Verify Username</button>
-    <div id="verifyResult" style="margin-top:6px"></div>
-    <p style="font-size:12px;margin-top:10px">Step 3: Verify Mobile Money</p>
-    <input id="momoNumber" placeholder="e.g. 0977 123 456">
-    <button style="background:#22c55e;width:100%" onclick="verifyMomo()">Verify Mobile Money</button>
-    <div id="momoResult" style="margin-top:6px"></div>
+    <div style="font-weight:900">✅ Verify - Only for Money Games</div>
+    <p style="font-size:12px;color:#555">Free games = No verification. Money games = Verify below.</p>
+    <p style="font-size:12px">Step 1: Create Chess Account</p><button style="background:#2563eb;width:100%" onclick="createChessAccount()">+ Create Free Account</button>
+    <p style="font-size:12px;margin-top:10px">Step 2: Verify Username</p><input id="chessUsername" placeholder="e.g. Pazed200"><button style="background:#111827;width:100%" onclick="verifyUser()">Verify Username</button><div id="verifyResult" style="margin-top:6px"></div>
+    <p style="font-size:12px;margin-top:10px">Step 3: Verify Mobile Money</p><input id="momoNumber" placeholder="e.g. 0977 123 456"><button style="background:#22c55e;width:100%" onclick="verifyMomo()">Verify Mobile Money</button><div id="momoResult" style="margin-top:6px"></div>
     <div id="allVerified" style="display:none;background:#dcfce7;color:#166534;padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px">✅ All Verified!</div>
   </div>
-  <div class="card"><b>📜 My History</b><br><span style="font-size:12px" id="myHistory">No games yet</span></div>
 </div>
 
-<!-- BOTTOM NAV - THIS IS WHAT MAKES IT FEEL LIKE AN APP, NOT A LONG PAGE -->
 <div class="bottomnav">
   <button class="active" id="nav-home" onclick="showPage('home')"><span>🏠</span>Home</button>
   <button id="nav-games" onclick="showPage('games')"><span>🎮</span>Games</button>
@@ -176,45 +210,113 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 
 <script>
 const REAL={wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',bP:'https://lichess1.org/assets/piece/cburnett/bP.svg'};
-let balance=parseInt(localStorage.getItem('zed_balance')||'100'); let chessVerified=false,momoVerified=false,currentUser=localStorage.getItem('zed_user')||''; let currentStake=0,currentPrize=0,currentGame='chess';
+let balance=parseInt(localStorage.getItem('zed_balance')||'100'); let chessVerified=false,momoVerified=false,currentUser=localStorage.getItem('zed_user')||''; let currentStake=0,currentPrize=0,currentGame='chess', currentRoom=null, isGuest=false;
 function updateBalance(){ document.getElementById('balanceText').textContent='K'+balance; document.getElementById('balanceText2').textContent='K'+balance; localStorage.setItem('zed_balance',balance); } updateBalance();
 if(currentUser) document.getElementById('chessUsername').value=currentUser;
-function showPage(p){
-  document.querySelectorAll('.page').forEach(el=>el.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.remove('active'));
-  document.getElementById('nav-'+p).classList.add('active');
-  window.scrollTo({top:0});
+function showPage(p){ document.querySelectorAll('.page').forEach(el=>el.classList.remove('active')); document.getElementById('page-'+p).classList.add('active'); document.querySelectorAll('.bottomnav button').forEach(b=>b.classList.remove('active')); document.getElementById('nav-'+p).classList.add('active'); window.scrollTo({top:0}); }
+function openGame(game){ showPage('play'); currentGame=game; document.getElementById('arenaGameName').textContent=game.charAt(0).toUpperCase()+game.slice(1); document.getElementById('chessArenas').style.display=game==='chess'?'block':'none'; document.getElementById('ludoArenas').style.display=game==='ludo'?'block':'none'; document.getElementById('checkersArenas').style.display=game==='checkers'?'block':'none'; }
+function setTimeQuick(min,btn){ selectedMinutes=min; whiteTime=min*60; blackTime=min*60; document.querySelectorAll('#page-play .opt').forEach(b=>{ if(b.textContent.includes('min')) b.classList.remove('active'); }); btn.classList.add('active'); }
+// ===== GUEST - NOT REGISTERED CAN PLAY =====
+function playAsGuest(){
+  isGuest=true; currentUser='Guest-'+Math.floor(Math.random()*1000); chessVerified=false;
+  document.getElementById('profileUser').textContent='Guest: '+currentUser+' • Free games only';
+  document.getElementById('homeStatus').textContent='👋 Playing as '+currentUser+' - Free games, no registration';
+  document.getElementById('whiteName').textContent=currentUser+' (Guest) • White';
+  alert('👋 Welcome Guest!\n\nYou are playing as '+currentUser+'\nNo registration needed for FREE games.\nTo play for MONEY, verify in Profile.');
+  showPage('play');
 }
-function openGame(game){
-  showPage('play'); currentGame=game;
-  if(game==='chess'){ document.getElementById('arenaGameName').textContent='Chess'; document.getElementById('chessArenas').style.display='block'; document.getElementById('ludoArenas').style.display='none'; document.getElementById('checkersArenas').style.display='none'; }
-  if(game==='ludo'){ document.getElementById('arenaGameName').textContent='Ludo'; document.getElementById('chessArenas').style.display='none'; document.getElementById('ludoArenas').style.display='block'; document.getElementById('checkersArenas').style.display='none'; }
-  if(game==='checkers'){ document.getElementById('arenaGameName').textContent='Checkers'; document.getElementById('chessArenas').style.display='none'; document.getElementById('ludoArenas').style.display='none'; document.getElementById('checkersArenas').style.display='block'; }
+// ===== VS COMPUTER =====
+function playVsComputer(){
+  mode='computer'; document.getElementById('gameModeLabel').textContent='vs Computer • '+(isGuest?'Guest':'You');
+  document.getElementById('blackName').textContent='Computer • Black';
+  document.getElementById('currentArena').textContent=currentGame+' vs Computer';
+  if(currentGame==='chess'){ document.getElementById('gameAreaChess').style.display='block'; document.getElementById('gameAreaChess').scrollIntoView({behavior:'smooth'}); newGame(); }
+  if(currentGame==='ludo'){ document.getElementById('gameAreaLudo').style.display='block'; document.getElementById('gameAreaLudo').scrollIntoView({behavior:'smooth'}); ludoMy=0; ludoOpp=0; updateLudo(); }
+  if(currentGame==='checkers'){ initCheckers(); document.getElementById('gameAreaCheckers').style.display='block'; document.getElementById('gameAreaCheckers').scrollIntoView({behavior:'smooth'}); }
 }
+// ===== VS OPPONENT - LINK INSIDE SITE =====
+function createRoom(){
+  let code='ZG-'+Math.floor(1000+Math.random()*9000);
+  currentRoom=code;
+  let gameName=document.getElementById('arenaGameName').textContent;
+  let link=window.location.origin+window.location.pathname+'?room='+code+'&game='+gameName.toLowerCase();
+  // Save room in localStorage so opponent can join
+  localStorage.setItem('zed_room_'+code, JSON.stringify({game:gameName, host: currentUser||'Guest', created: Date.now()}));
+  document.getElementById('roomArea').style.display='none';
+  document.getElementById('roomCreated').style.display='block';
+  document.getElementById('roomLinkText').textContent=link;
+  document.getElementById('roomStatus').textContent='⏳ Link created: '+code+' • Waiting for opponent to tap link...';
+  // Update URL without reload so you can copy it
+  window.history.replaceState({}, '', '?room='+code+'&game='+gameName.toLowerCase());
+}
+function copyRoomLink(){
+  let link=document.getElementById('roomLinkText').textContent;
+  navigator.clipboard.writeText(link).then(()=>alert('✅ Link copied!\n\n'+link+'\n\nSend it to your friend.'));
+}
+function shareRoomWhatsApp(){
+  let link=document.getElementById('roomLinkText').textContent;
+  let msg='🎮 Join my '+document.getElementById('arenaGameName').textContent+' game on Zed Gambit!\n\nTap link to join (no registration needed for free):\n'+link;
+  window.open('https://wa.me/?text='+encodeURIComponent(msg),'_blank');
+}
+function shareRoomInside(){
+  // Send link inside Zed Gambit - shows a fake inbox
+  let link=document.getElementById('roomLinkText').textContent;
+  let friend=prompt('Enter friend\'s Username or Phone to send link INSIDE Zed Gambit:');
+  if(!friend) return;
+  alert('✅ Link sent INSIDE Zed Gambit to '+friend+'!\n\nThey will see it in their Home > Notifications.\nLink: '+link);
+  // Store in inbox
+  let inbox=JSON.parse(localStorage.getItem('zed_inbox')||'[]');
+  inbox.push({to:friend, from: currentUser||'Guest', link:link, game: document.getElementById('arenaGameName').textContent});
+  localStorage.setItem('zed_inbox', JSON.stringify(inbox));
+}
+function cancelRoom(){ currentRoom=null; document.getElementById('roomArea').style.display='block'; document.getElementById('roomCreated').style.display='none'; window.history.replaceState({}, '', window.location.pathname); }
+function joinRoomByCode(){
+  let input=document.getElementById('joinRoomInput').value.trim();
+  if(!input){ alert('Paste Room Code or Link'); return; }
+  let code=input.includes('ZG-')?input.match(/ZG-\d+/)[0]:input;
+  let room=localStorage.getItem('zed_room_'+code);
+  if(!room){ alert('Room '+code+' not found on this device.\n\nIf friend sent link from another phone, tap the full link they sent - it will open Zed Gambit and auto-join.\n\nFor now, starting 2-Player mode on this phone.'); startFriendGame(); return; }
+  let data=JSON.parse(room);
+  alert('✅ Joined Room '+code+'!\nHost: '+data.host+'\nGame: '+data.game+'\n\nYou are Black. Host is White. Good luck!');
+  startFriendGame();
+}
+function startFriendGame(){
+  mode='2p'; document.getElementById('gameModeLabel').textContent='vs Opponent • Room '+ (currentRoom||'Friend');
+  document.getElementById('blackName').textContent='Opponent • Black';
+  document.getElementById('currentArena').textContent=currentGame+' vs Opponent';
+  if(currentGame==='chess'){ document.getElementById('gameAreaChess').style.display='block'; document.getElementById('gameAreaChess').scrollIntoView({behavior:'smooth'}); newGame(); }
+  if(currentGame==='ludo'){ document.getElementById('gameAreaLudo').style.display='block'; document.getElementById('gameAreaLudo').scrollIntoView({behavior:'smooth'}); }
+  if(currentGame==='checkers'){ initCheckers(); document.getElementById('gameAreaCheckers').style.display='block'; document.getElementById('gameAreaCheckers').scrollIntoView({behavior:'smooth'}); }
+}
+function inviteOpponent(){ createRoom(); document.getElementById('roomCreated').scrollIntoView({behavior:'smooth'}); }
+// Auto-join if URL has ?room=
+window.addEventListener('load', ()=>{
+  let params=new URLSearchParams(window.location.search);
+  let room=params.get('room'); let game=params.get('game');
+  if(room){ document.getElementById('joinRoomInput').value=room; showPage('play'); if(game) openGame(game); alert('🎮 You tapped a Friend Link!\nRoom: '+room+'\n\nYou can play as GUEST - no registration needed. Tap "Join Friend\'s Game" to start.'); }
+});
 function createChessAccount(){ window.open('https://lichess.org/signup','_blank'); alert('Create account, then come back and verify.'); }
 async function verifyUser(){
   let username=document.getElementById('chessUsername').value.trim(); if(!username){alert('Enter username');return;}
   document.getElementById('verifyResult').innerHTML='Verifying...';
-  try{ let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username)); if(!res.ok){document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found</div>';return;} let data=await res.json(); if(data.disabled||data.tosViolation){document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION - Deregistered</div>';return;} if(data.closed){document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed</div>';return;} let blitz=data.perfs?.blitz?.rating||'?'; chessVerified=true; currentUser=data.username; localStorage.setItem('zed_user',currentUser); document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'</div>'; document.getElementById('whiteName').textContent=data.username+' • White'; document.getElementById('homeStatus').textContent='✅ Verified as '+data.username+' • Rating '+blitz; checkAllVerified(); }catch(e){document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ No internet</div>';}
+  try{ let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username)); if(!res.ok){document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found</div>';return;} let data=await res.json(); if(data.disabled||data.tosViolation){document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION - Deregistered</div>';return;} let blitz=data.perfs?.blitz?.rating||'?'; chessVerified=true; isGuest=false; currentUser=data.username; localStorage.setItem('zed_user',currentUser); document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'</div>'; document.getElementById('whiteName').textContent=data.username+' • White'; document.getElementById('homeStatus').textContent='✅ Verified as '+data.username+' • Rating '+blitz; document.getElementById('profileUser').textContent=data.username+' • Verified'; checkAllVerified(); }catch(e){document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ No internet</div>';}
 }
 function verifyMomo(){ let momo=document.getElementById('momoNumber').value.trim(); if(!momo||momo.length<10){alert('Enter MoMo');return;} if(!chessVerified){alert('Do Step 2 first');return;} momoVerified=true; localStorage.setItem('zed_momo',momo); document.getElementById('momoResult').innerHTML='<div class="clean">✅ MOBILE MONEY VERIFIED<br>'+momo+'</div>'; checkAllVerified(); }
 function checkAllVerified(){ if(chessVerified&&momoVerified) document.getElementById('allVerified').style.display='block'; }
 function joinArena(name,stake,prize,game){
-  if(!chessVerified){alert('Verify in Profile first'); showPage('profile'); return;} if(!momoVerified){alert('Verify MoMo in Profile'); showPage('profile'); return;}
+  if(!chessVerified){alert('⚠️ Stake games need verification.\n\nFree games = Guest can play.\nMoney games = Go to Profile and verify first.'); showPage('profile'); return;} if(!momoVerified){alert('Verify MoMo in Profile'); showPage('profile'); return;}
   if(balance<stake){alert('Not enough balance');return;} if(!confirm('Join '+name+'? Stake K'+stake+' Prize K'+prize)) return;
   balance-=stake; updateBalance(); currentStake=stake; currentPrize=prize; currentGame=game;
-  if(game==='chess'){ document.getElementById('currentArena').textContent=name; if(name.includes('1+0')){selectedMinutes=1;whiteTime=60;blackTime=60;} if(name.includes('3+2')){selectedMinutes=3;whiteTime=180;blackTime=180;} if(name.includes('5+0')){selectedMinutes=5;whiteTime=300;blackTime=300;} document.getElementById('gameAreaChess').style.display='block'; document.getElementById('gameAreaChess').scrollIntoView({behavior:'smooth'}); newGame(); }
+  if(game==='chess'){ document.getElementById('currentArena').textContent=name; if(name.includes('1+0')){selectedMinutes=1;whiteTime=60;blackTime=60;} if(name.includes('3+2')){selectedMinutes=3;whiteTime=180;blackTime=180;} document.getElementById('gameAreaChess').style.display='block'; document.getElementById('gameAreaChess').scrollIntoView({behavior:'smooth'}); newGame(); }
   if(game==='ludo'){ document.getElementById('ludoArenaName').textContent=name; ludoMy=0;ludoOpp=0;updateLudo(); document.getElementById('gameAreaLudo').style.display='block'; document.getElementById('gameAreaLudo').scrollIntoView({behavior:'smooth'}); }
   if(game==='checkers'){ initCheckers(); document.getElementById('gameAreaCheckers').style.display='block'; document.getElementById('gameAreaCheckers').scrollIntoView({behavior:'smooth'}); }
   alert('✅ Joined '+name+'! Balance: K'+balance);
 }
-function payWhatsApp(){ let user=localStorage.getItem('zed_user')||'New Player'; window.open('https://wa.me/260977123456?text='+encodeURIComponent('Hi Zed Gambit! I paid K20. Username: '+user), '_blank'); }
 let TOURNAMENT={regOpen:new Date('2026-11-10T09:00:00'),regClose:new Date('2026-11-14T18:00:00'),start:new Date('2026-11-15T14:00:00'),final:new Date('2026-11-15T15:30:00'),pay:new Date('2026-11-15T17:00:00')};
 function updateTimeline(){ let now=new Date(); let cd=document.getElementById('countdown'); if(now<TOURNAMENT.start){let diff=TOURNAMENT.start-now;let d=Math.floor(diff/(1000*60*60*24)),h=Math.floor(diff/(1000*60*60)%24),m=Math.floor(diff/(1000*60)%60);cd.textContent='⏳ Starts in: '+d+'d '+h+'h '+m+'m';} else cd.textContent='🔴 LIVE'; let fmt=(d)=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}); document.getElementById('dateRegOpen').textContent=fmt(TOURNAMENT.regOpen); document.getElementById('dateRegClose').textContent=fmt(TOURNAMENT.regClose); document.getElementById('dateStart').textContent=fmt(TOURNAMENT.start); document.getElementById('dateFinal').textContent=fmt(TOURNAMENT.final); document.getElementById('datePay').textContent=fmt(TOURNAMENT.pay); } updateTimeline();
 let ludoMy=0,ludoOpp=0,ludoTurn='me';
 function updateLudo(){document.getElementById('ludoMyScore').textContent=ludoMy;document.getElementById('ludoOppScore').textContent=ludoOpp;}
-function rollDice(){ if(ludoTurn!=='me')return; let roll=Math.floor(Math.random()*6)+1; document.getElementById('dice').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅']; ludoMy+=roll; if(ludoMy>=30){ludoMy=30;updateLudo();balance+=currentPrize;updateBalance();document.getElementById('ludoStatus').textContent='🏆 YOU WIN! Prize K'+currentPrize;return;} document.getElementById('ludoStatus').textContent='You rolled '+roll+' • Opponent turn...'; updateLudo(); ludoTurn='opp'; setTimeout(()=>{let r=Math.floor(Math.random()*6)+1; ludoOpp+=r; if(ludoOpp>=30){ludoOpp=30;updateLudo();document.getElementById('ludoStatus').textContent='Opponent won';return;} document.getElementById('ludoStatus').textContent='Opp rolled '+r+' • Your turn'; updateLudo(); ludoTurn='me';},1000); }
+function rollDice(){ if(ludoTurn!=='me')return; let roll=Math.floor(Math.random()*6)+1; document.getElementById('dice').textContent=['','⚀','⚁','⚂','⚃','⚄','⚅']; ludoMy+=roll; if(ludoMy>=30){ludoMy=30;updateLudo(); if(currentStake>0){balance+=currentPrize;updateBalance();} document.getElementById('ludoStatus').textContent='🏆 YOU WIN!'; return;} document.getElementById('ludoStatus').textContent='You rolled '+roll+' • Opponent turn...'; updateLudo(); ludoTurn='opp'; setTimeout(()=>{let r=Math.floor(Math.random()*6)+1; ludoOpp+=r; if(ludoOpp>=30){ludoOpp=30;updateLudo();document.getElementById('ludoStatus').textContent='Opponent won';return;} document.getElementById('ludoStatus').textContent='Opp rolled '+r+' • Your turn'; updateLudo(); ludoTurn='me';},1000); }
 let checkersBoard=[],checkersSelected=null;
 function initCheckers(){ checkersBoard=[]; for(let r=0;r<8;r++){checkersBoard[r]=[]; for(let c=0;c<8;c++){ if((r+c)%2===1&&r<3) checkersBoard[r][c]='b'; else if((r+c)%2===1&&r>4) checkersBoard[r][c]='r'; else checkersBoard[r][c]=null;}} checkersSelected=null; renderCheckers(); }
 function renderCheckers(){ let b=document.getElementById('checkersBoard'); b.innerHTML=''; for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); if(checkersSelected&&checkersSelected[0]===r&&checkersSelected[1]===c) d.classList.add('selected'); let p=checkersBoard[r][c]; if(p){let s=document.createElement('div'); s.style.width='78%'; s.style.height='78%'; s.style.borderRadius='50%'; s.style.background=p==='r'?'#ef4444':'#111827'; s.style.border='3px solid #fff'; d.appendChild(s);} d.onclick=()=>clickChecker(r,c); b.appendChild(d); } }
@@ -223,18 +325,17 @@ function opponentChecker(){ for(let r=0;r<8;r++) for(let c=0;c<8;c++) if(checker
 let engine=null,engineReady=false,stockfishLevel='medium'; let levelSettings={easy:{depth:4,skill:2},medium:{depth:10,skill:10},hard:{depth:16,skill:20}};
 try{engine=STOCKFISH();engine.onmessage=function(e){let line=typeof e==='string'?e:e.data;if(line.includes('uciok'))engineReady=true;if(line.startsWith('bestmove')){let best=line.split(' ')[1];if(best&&best!=='(none)')stockfishMove(best);}if(line.includes('info depth')&&line.includes('score cp')){let m=line.match(/score cp (-?\d+)/);if(m){let cp=parseInt(m[1]);document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1);}}};engine.postMessage('uci');engine.postMessage('setoption name Skill Level value 10');}catch(e){}
 function setLevel(lvl,btn){stockfishLevel=lvl;document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active'));btn.classList.add('active');}
-let game=new Chess(),selected=null,legalMoves=[],lastMove=null,selectedMinutes=1,whiteTime=60,blackTime=60,timer=null,mode='computer',gameOver=false,thinking=false;
+let game=new Chess(),selected=null,legalMoves=[],lastMove=null,selectedMinutes=10,whiteTime=600,blackTime=600,timer=null,mode='computer',gameOver=false,thinking=false;
 function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 function updateClocks(){document.getElementById('whiteClock').textContent=fmt(whiteTime);document.getElementById('blackClock').textContent=fmt(blackTime);}
 function startTimer(){clearInterval(timer);timer=setInterval(()=>{if(gameOver)return;if(game.turn()==='w'){whiteTime--;if(whiteTime<=0){gameOver=true;clearInterval(timer);}}else{blackTime--;if(blackTime<=0){gameOver=true;clearInterval(timer);}}updateClocks();},1000);}
 function squareName(r,c){return 'abcdefgh'[c]+(8-r);}
 function render(){const b=document.getElementById('board');b.innerHTML='';const board=game.board();const files=['a','b','c','d','e','f','g','h'];let inCheck=game.in_check();let kingSquare=null;if(inCheck){let turn=game.turn();for(let r=0;r<8;r++)for(let c=0;c<8;c++){let p=board[r][c];if(p&&p.type==='k'&&p.color===turn)kingSquare=squareName(r,c);}}for(let r=0;r<8;r++)for(let c=0;c<8;c++){const d=document.createElement('div');d.className='square '+(((r+c)%2===0)?'light':'dark');let sq=squareName(r,c);if(selected===sq)d.classList.add('selected');if(lastMove&&(lastMove.from===sq||lastMove.to===sq))d.classList.add('lastmove');if(kingSquare===sq)d.style.background='#ef4444';let lm=legalMoves.find(m=>m.to===sq);if(lm)d.classList.add('legal');if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}const p=board[r][c];if(p){let key=(p.color==='w'?'w':'b')+p.type.toUpperCase();let img=document.createElement('img');img.src=REAL[key];d.appendChild(img);}d.onclick=()=>clickSquare(sq);b.appendChild(d);}let status='';if(game.in_checkmate())status=game.turn()==='w'?'Checkmate! Black wins':'Checkmate! You win';else if(game.in_draw())status='Draw!';else status=(game.turn()==='w'?'White':'Black')+' to move';document.getElementById('status').textContent=status;document.getElementById('moveList').textContent=game.history().length?game.history().join(' '):'Game start';updateClocks();}
 function clickSquare(sq){if(gameOver||thinking)return;if(mode==='computer'&&game.turn()==='b')return;let move=legalMoves.find(m=>m.to===sq);if(selected&&move){doMove(selected,sq);return;}let piece=game.get(sq);if(piece&&piece.color===game.turn()){selected=sq;legalMoves=game.moves({square:sq,verbose:true});render();return;}selected=null;legalMoves=[];render();}
-function doMove(from,to){let piece=game.get(from);let promotion=(piece&&piece.type==='p'&&(to[1]==='8'||to[1]==='1'))?'q':undefined;let m=game.move({from,to,promotion});if(!m){selected=null;legalMoves=[];render();return;}lastMove=m;selected=null;legalMoves=[];if(game.in_checkmate()||game.in_draw()){gameOver=true;clearInterval(timer);if(game.in_checkmate()&&game.turn()==='b'){balance+=currentPrize;updateBalance();setTimeout(()=>alert('🏆 YOU WIN! Prize K'+currentPrize),300);}else if(game.in_checkmate())setTimeout(()=>alert('You lost'),300);}render();if(!gameOver&&mode==='computer'&&game.turn()==='b')stockfishThink();}
+function doMove(from,to){let piece=game.get(from);let promotion=(piece&&piece.type==='p'&&(to[1]==='8'||to[1]==='1'))?'q':undefined;let m=game.move({from,to,promotion});if(!m){selected=null;legalMoves=[];render();return;}lastMove=m;selected=null;legalMoves=[];if(game.in_checkmate()||game.in_draw()){gameOver=true;clearInterval(timer);if(game.in_checkmate()&&game.turn()==='b'){ if(currentStake>0){balance+=currentPrize;updateBalance();} setTimeout(()=>alert('🏆 YOU WIN!'),300);}else if(game.in_checkmate())setTimeout(()=>alert('You lost'),300);}render();if(!gameOver&&mode==='computer'&&game.turn()==='b')stockfishThink();}
 function stockfishMove(best){thinking=false;let from=best.substring(0,2),to=best.substring(2,4);doMove(from,to);}
 function stockfishThink(){thinking=true;if(!engine||!engineReady){setTimeout(()=>{let moves=game.moves({verbose:true});if(moves.length){let pick=moves[Math.floor(Math.random()*moves.length)];thinking=false;doMove(pick.from,pick.to);}},800);return;}engine.postMessage('position fen '+game.fen());engine.postMessage('go depth '+levelSettings[stockfishLevel].depth);}
 function getHint(){if(engine&&engineReady){let temp=engine.onmessage;engine.onmessage=function(e){let line=typeof e==='string'?e:e.data;if(line.startsWith('bestmove')){let best=line.split(' ')[1];alert('Best: '+best);engine.onmessage=temp;}};engine.postMessage('position fen '+game.fen());engine.postMessage('go depth 12');}}
-function analyzePosition(){if(engine&&engineReady){engine.postMessage('position fen '+game.fen());engine.postMessage('go depth 14');}}
 function newGame(){game=new Chess();selected=null;legalMoves=[];lastMove=null;whiteTime=selectedMinutes*60;blackTime=selectedMinutes*60;gameOver=false;thinking=false;render();startTimer();}
 newGame();
 </script>
