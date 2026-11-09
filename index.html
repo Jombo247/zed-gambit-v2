@@ -4,7 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zed Gambit</title>
+<title>Zed Gambit - Real Rules</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <style>
 body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px;text-align:center}
 .player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:420px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
@@ -19,6 +20,9 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .light{background:#ebecd0}.dark{background:#739552}
 .square.selected{outline:3px solid #facc15;outline-offset:-3px}
 .square.lastmove{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.35)}
+.square.legal::after{content:'';width:22%;height:22%;background:rgba(0,0,0,0.25);border-radius:50%;position:absolute}
+.square.legal-capture::after{content:'';width:92%;height:92%;border:4px solid rgba(0,0,0,0.25);border-radius:50%;position:absolute}
+.square.check{background:#ef4444 !important}
 .square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
 button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
@@ -26,12 +30,12 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 .opt.active{background:#facc15;color:#000}
 .moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
 .captured{font-size:16px;min-height:20px;text-align:left}
+#status{font-weight:800;color:#facc15;margin:6px}
 </style>
 </head>
 <body>
 <h2 style="margin:5px">♞ Zed Gambit</h2>
 
-<!-- TIME + MODE CHOOSER -->
 <div style="max-width:420px;margin:auto;background:#1f2937;padding:10px;border-radius:12px">
 <div style="font-size:12px;opacity:.7;margin-bottom:4px">TIME CONTROL</div>
 <button class="opt" data-time="1" onclick="setTime(1,this)">1 min</button>
@@ -43,7 +47,6 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 <button class="opt" id="btn2p" onclick="setMode('2p')">👥 2 Players</button>
 </div>
 
-<!-- OPPONENT -->
 <div class="player-bar" id="blackBar">
   <div style="display:flex;gap:8px;align-items:center">
     <div class="avatar" id="blackAvatar">🤖</div>
@@ -52,9 +55,9 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
   <div class="clock" id="blackClock">10:00</div>
 </div>
 
+<div id="status">White to move</div>
 <div id="board"></div>
 
-<!-- YOU -->
 <div class="player-bar" id="whiteBar">
   <div style="display:flex;gap:8px;align-items:center">
     <div class="avatar">😀</div>
@@ -63,7 +66,7 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
   <div class="clock" id="whiteClock">10:00</div>
 </div>
 
-<p style="color:#facc15;margin:4px">You are WHITE • Real SVG Graphics</p>
+<p style="color:#facc15;margin:4px">You are WHITE • Real Rules • chess.js</p>
 <div>
 <button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
 <button style="background:#3b82f6" onclick="alert('Draw offered')">🤝 Offer Draw</button>
@@ -86,16 +89,16 @@ const REAL = {
   bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
   bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
-const SYMBOL = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
-let board, selected=null, lastMove=null, turn='w';
-let selectedMinutes=10, whiteTime=600, blackTime=600, timer=null, moveNum=1, moves=[], capturedByWhite=[], capturedByBlack=[];
+// chess.js is now responsible for RULES
+let game = new Chess();
+let selected=null, legalMoves=[], lastMove=null;
+let selectedMinutes=10, whiteTime=600, blackTime=600, timer=null;
 let mode='computer', gameOver=false, thinking=false;
 
 function setTime(min, btn){
   selectedMinutes=min; whiteTime=min*60; blackTime=min*60;
   document.querySelectorAll('[data-time]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  newGame();
+  btn.classList.add('active'); newGame();
 }
 function setMode(m){
   mode=m;
@@ -105,127 +108,129 @@ function setMode(m){
   document.getElementById('blackAvatar').textContent = m==='computer' ? '🤖' : '👤';
   newGame();
 }
-function startBoard(){
-  board=[
-    ['bR','bN','bB','bQ','bK','bB','bN','bR'],
-    ['bP','bP','bP','bP','bP','bP','bP','bP'],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    [null,null,null,null,null,null,null,null],
-    ['wP','wP','wP','wP','wP','wP','wP','wP'],
-    ['wR','wN','wB','wQ','wK','wB','wN','wR'],
-  ];
-}
 function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 function updateClocks(){
   document.getElementById('whiteClock').textContent=fmt(whiteTime);
   document.getElementById('blackClock').textContent=fmt(blackTime);
+  let turn=game.turn();
   document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':'')+(whiteTime<30?' low':'');
   document.getElementById('blackClock').className='clock'+(turn==='b'?' active':'')+(blackTime<30?' low':'');
   document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':'');
   document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':'');
-  document.getElementById('whiteCaptured').textContent=capturedByWhite.map(p=>SYMBOL[p[1].toLowerCase()]).join(' ');
-  document.getElementById('blackCaptured').textContent=capturedByBlack.map(p=>SYMBOL[p[1]]).join(' ');
+  // Captured pieces from history
+  let hist=game.history({verbose:true});
+  let wCap=[], bCap=[];
+  const SYM={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'};
+  hist.forEach(m=>{ if(m.captured){ if(m.color==='w') wCap.push(SYM[m.captured.toUpperCase()]); else bCap.push(SYM[m.captured]); }});
+  document.getElementById('whiteCaptured').textContent=wCap.join(' ');
+  document.getElementById('blackCaptured').textContent=bCap.join(' ');
 }
 function startTimer(){
   clearInterval(timer);
   timer=setInterval(()=>{
     if(gameOver) return;
-    if(turn==='w'){ whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');} }
+    if(game.turn()==='w'){ whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');} }
     else{ blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');} }
     updateClocks();
   },1000);
 }
+function squareName(r,c){ return 'abcdefgh'[c]+(8-r); }
 function render(){
   const b=document.getElementById('board'); b.innerHTML='';
+  const board=game.board(); // 8x8 from chess.js
   const files=['a','b','c','d','e','f','g','h'];
+  // Find king in check
+  let inCheck=game.in_check();
+  let kingSquare=null;
+  if(inCheck){
+    let turn=game.turn();
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); }
+  }
   for(let r=0;r<8;r++) for(let c=0;c<8;c++){
     const d=document.createElement('div');
     d.className='square '+(((r+c)%2===0)?'light':'dark');
-    if(selected && selected[0]===r && selected[1]===c) d.classList.add('selected');
-    if(lastMove && ((lastMove[0]===r && lastMove[1]===c)||(lastMove[2]===r && lastMove[3]===c))) d.classList.add('lastmove');
+    let sq=squareName(r,c);
+    if(selected===sq) d.classList.add('selected');
+    if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove');
+    if(kingSquare===sq) d.classList.add('check');
+    let lm=legalMoves.find(m=>m.to===sq);
+    if(lm){ d.classList.add(lm.captured ? 'legal-capture' : 'legal'); }
     if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}
     if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}
     const p=board[r][c];
-    if(p){let img=document.createElement('img');img.src=REAL[p];img.alt=p;d.appendChild(img);}
-    d.onclick=()=>clickSquare(r,c);
+    if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; img.alt=key; d.appendChild(img); }
+    d.onclick=()=>clickSquare(sq);
     b.appendChild(d);
   }
+  // Status
+  let status='';
+  if(game.in_checkmate()) status = game.turn()==='w' ? 'Checkmate! Black wins 🏆' : 'Checkmate! White wins 🏆';
+  else if(game.in_draw()) status='Draw! 🤝';
+  else if(game.in_stalemate()) status='Stalemate! 🤝';
+  else if(game.in_check()) status = (game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️';
+  else status = (game.turn()==='w'?'White':'Black')+' to move';
+  document.getElementById('status').textContent=status;
+  document.getElementById('moveList').textContent = game.history().length? game.history().join(' ') : 'Game start';
   updateClocks();
 }
-function doMove(fr,fc,tr,tc){
-  let piece=board[fr][fc], captured=board[tr][tc];
-  if(captured){ if(captured[0]==='w') capturedByBlack.push(captured); else capturedByWhite.push(captured); }
-  const files=['a','b','c','d','e','f','g','h'];
-  let moveStr=files[fc]+(8-fr)+'-'+files[tc]+(8-tr);
-  if(turn==='w'){ moves.push(moveNum+'. '+moveStr); } else { moves[moves.length-1]+=' '+moveStr; moveNum++; }
-  document.getElementById('moveList').textContent=moves.join('  ');
-  board[tr][tc]=piece; board[fr][fc]=null;
-  // Pawn promotion - auto queen
-  if(piece==='wP' && tr===0) board[tr][tc]='wQ';
-  if(piece==='bP' && tr===7) board[tr][tc]='bQ';
-  lastMove=[fr,fc,tr,tc]; selected=null; turn=turn==='w'?'b':'w';
-  render();
-  if(!gameOver && mode==='computer' && turn==='b') computerMove();
-}
-function clickSquare(r,c){
-  if(gameOver) return;
-  if(thinking) return;
-  if(mode==='computer' && turn==='b') return;
-  if(selected){
-    // Only allow moving your own piece
-    let p=board[selected[0]][selected[1]];
-    if(!p) {selected=null;render();return;}
-    // If clicking own piece again, reselect
-    if(board[r][c] && board[r][c][0]===p[0]){ selected=[r,c]; render(); return; }
-    doMove(selected[0],selected[1],r,c);
+function clickSquare(sq){
+  if(gameOver || thinking) return;
+  if(mode==='computer' && game.turn()==='b') return;
+  // If selected and clicked legal move -> do it
+  let move=legalMoves.find(m=>m.to===sq);
+  if(selected && move){
+    doMove(selected, sq);
     return;
   }
-  if(board[r][c] && ((turn==='w' && board[r][c][0]==='w')||(turn==='b' && board[r][c][0]==='b'))){ selected=[r,c]; render(); }
+  // Else select new piece
+  let piece=game.get(sq);
+  if(piece && piece.color===game.turn()){
+    selected=sq;
+    legalMoves=game.moves({square:sq, verbose:true});
+    render(); return;
+  }
+  selected=null; legalMoves=[]; render();
+}
+function doMove(from, to){
+  // Promotion: auto-queen if pawn reaches last rank
+  let piece=game.get(from);
+  let promotion = (piece && piece.type==='p' && (to[1]==='8' || to[1]==='1')) ? 'q' : undefined;
+  let m=game.move({from, to, promotion});
+  if(!m){ selected=null; legalMoves=[]; render(); return; }
+  lastMove=m; selected=null; legalMoves=[];
+  // Check game end
+  if(game.in_checkmate() || game.in_draw() || game.in_stalemate()){
+    gameOver=true; clearInterval(timer);
+    setTimeout(()=>{ if(game.in_checkmate()) alert(game.turn()==='w'?'Checkmate! Black wins!':'Checkmate! White wins!'); else alert('Draw!'); },300);
+  }
+  render();
+  if(!gameOver && mode==='computer' && game.turn()==='b') computerMove();
 }
 function computerMove(){
   thinking=true;
+  document.getElementById('status').textContent='Computer thinking...';
   setTimeout(()=>{
     thinking=false;
     if(gameOver) return;
-    // Find all black pieces and all possible capture / forward moves
-    let options=[];
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-      let p=board[r][c]; if(!p || p[0]!=='b') continue;
-      // Try to capture white pieces first - prefer captures
-      for(let tr=0;tr<8;tr++) for(let tc=0;tc<8;tc++){
-        let target=board[tr][tc];
-        if(target && target[0]==='w'){
-          // Simple: allow capture if within 2 squares (keeps computer active)
-          if(Math.abs(tr-r)<=2 && Math.abs(tc-c)<=2) options.push({fr:r,fc:c,tr,tc,score:10});
-        }
-      }
-      // Normal moves: pawn forward, others random 1 step
-      let dirs=[];
-      if(p==='bP') dirs=[[1,0],[1,1],[1,-1],[2,0]];
-      else dirs=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2]];
-      for(let d of dirs){
-        let tr=r+d[0], tc=c+d[1];
-        if(tr<0||tr>7||tc<0||tc>7) continue;
-        if(!board[tr][tc]) options.push({fr:r,fc:c,tr,tc,score:1});
-      }
-    }
-    if(options.length===0){ gameOver=true; alert('Computer has no moves - You win!'); return; }
-    // Prefer captures 70% of time
-    let captures=options.filter(o=>o.score===10);
-    let pick = (captures.length>0 && Math.random()<0.7) ? captures[Math.floor(Math.random()*captures.length)] : options[Math.floor(Math.random()*options.length)];
-    doMove(pick.fr,pick.fc,pick.tr,pick.tc);
+    let moves=game.moves({verbose:true});
+    if(moves.length===0) return;
+    // Prefer captures + checks
+    let captures=moves.filter(m=>m.captured);
+    let checks=moves.filter(m=>{ let g=new Chess(game.fen()); g.move(m); return g.in_check(); });
+    let pick;
+    if(captures.length>0 && Math.random()<0.7) pick=captures[Math.floor(Math.random()*captures.length)];
+    else if(checks.length>0 && Math.random()<0.5) pick=checks[Math.floor(Math.random()*checks.length)];
+    else pick=moves[Math.floor(Math.random()*moves.length)];
+    doMove(pick.from, pick.to);
   },700);
 }
 function newGame(){
-  startBoard(); selected=null; lastMove=null; turn='w';
+  game=new Chess(); selected=null; legalMoves=[]; lastMove=null;
   whiteTime=selectedMinutes*60; blackTime=selectedMinutes*60;
-  moves=[]; moveNum=1; capturedByWhite=[]; capturedByBlack=[]; gameOver=false; thinking=false;
-  document.getElementById('moveList').textContent='Game start';
+  gameOver=false; thinking=false;
   render(); startTimer();
 }
-startBoard(); render(); startTimer();
+newGame();
 </script>
 </body>
 </html>
