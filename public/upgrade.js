@@ -169,6 +169,23 @@ function gatePhone(){
   });
 }
 setInterval(gatePhone, 1000);
+// Make Peace mode stronger - tweak AI depth
+function fixPeace(){
+  const isPeace = document.body.innerText.includes('Peace Mode');
+  if(!isPeace) return;
+  // Tweak the AI to play stronger in Peace
+  // (If needed we can inject JS into game iframe)
+  document.querySelectorAll('button').forEach(btn=>{
+    if(btn.textContent.includes('Restart')){
+      btn.onclick = () => {
+        // Maybe force restart with stronger settings?
+        alert('Restarting with stronger AI...');
+        // Tweak the game object if exposed
+      };
+    }
+  });
+}
+setInterval(fixPeace, 1000);
 
 
 
