@@ -1,88 +1,135 @@
 
-import { useState } from 'react'
-export default function Auth({ onLogin }) {
-  const [mode, setMode] = useState('login')
-  const [name, setName] = useState('')
-  const [username, setUsername] = useState('')
-  const [email, setEmail] = useState('')
-  const [password, setPassword] = useState('')
-  const [code, setCode] = useState('')
-  const [step, setStep] = useState('form')
-  const [err, setErr] = useState('')
-  const [info, setInfo] = useState('')
-  const [pendingEmail, setPendingEmail] = useState('')
+import { useState } from "react"
 
-  const submit = async (e) => {
-    e.preventDefault(); setErr(''); setInfo('')
-    if (mode === 'login') {
-      const r = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username, password }) })
-      const d = await r.json()
-      if (!r.ok) {
-        if (d.needVerify) { setPendingEmail(d.email); setStep('verify'); setInfo('Your email is not verified yet. Enter the code sent to ' + d.email); return }
-        setErr(d.error); return
-      }
-      localStorage.setItem('zed_user', JSON.stringify(d.user))
-      localStorage.setItem('zed_token', d.token)
-      onLogin(d.user)
+// Player starts with rating 1000, balance 0 for now
+// Payment will be added later
+
+function getUsers() {
+  return JSON.parse(localStorage.getItem("users") || "[]")
+}
+
+function saveUsers(users) {
+  localStorage.setItem("users", JSON.stringify(users))
+}
+
+export default function Auth({ mode }) {
+  const isAdminLink = window.location.search.includes("admin=1")
+  const isAdmin = mode === "admin" || isAdminLink
+
+  const [tab, setTab] = useState("login")
+  const [username, setUsername] = useState("")
+  const [password, setPassword] = useState("")
+  const [message, setMessage] = useState("")
+
+  const currentUser = JSON.parse(localStorage.getItem("currentUser") || "null")
+
+  function register() {
+    if (!username || !password) {
+      setMessage("Enter username and password")
       return
     }
-    if (!email.includes('@')) { setErr('Enter a valid email e.g. themba@gmail.com'); return }
-    const r = await fetch('/api/auth/register', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, username, email, password }) })
-    const d = await r.json()
-    if (!r.ok) { setErr(d.error); return }
-    setPendingEmail(email)
-    setStep('verify')
-    setInfo('Verification code sent to ' + email + '. Check inbox / spam.')
+    const users = getUsers()
+    if (users.find((u) => u.username === username)) {
+      setMessage("Username already taken")
+      return
+    }
+    const newUser = {
+      username,
+      password,
+      rating: 1000,
+      balance: 0,
+      role: "player",
+      createdAt: new Date().toISOString(),
+    }
+    users.push(newUser)
+    saveUsers(users)
+    localStorage.setItem("currentUser", JSON.stringify(newUser))
+    setMessage("Registered. Welcome " + username)
+    window.location.reload()
   }
 
-  const verify = async (e) => {
-    e.preventDefault(); setErr('')
-    const r = await fetch('/api/auth/verify-email', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: pendingEmail, code }) })
-    const d = await r.json()
-    if (!r.ok) { setErr(d.error); return }
-    setInfo('Email verified! Now login.')
-    setStep('form'); setMode('login'); setCode('')
+  function login() {
+    const users = getUsers()
+
+    // ADMIN LOGIN - only works on secret link
+    if (isAdmin) {
+      if (username === "admin" && password === "admin123") {
+        localStorage.setItem("currentUser", JSON.stringify({ username: "admin", role: "admin", rating: 0 }))
+        window.location.href = "/admin-dashboard"
+        return
+      } else {
+        setMessage("Wrong admin login")
+        return
+      }
+    }
+
+    // PLAYER LOGIN
+    const found = users.find((u) => u.username === username && u.password === password)
+    if (!found) {
+      setMessage("Wrong username or password")
+      return
+    }
+    localStorage.setItem("currentUser", JSON.stringify(found))
+    setMessage("Welcome back " + username)
+    window.location.reload()
   }
 
-  const resend = async () => {
-    const r = await fetch('/api/auth/resend-code', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: pendingEmail }) })
-    const d = await r.json()
-    if (!r.ok) { setErr(d.error); return }
-    setInfo('New code sent to ' + pendingEmail + '. Check inbox / spam.')
+  function logout() {
+    localStorage.removeItem("currentUser")
+    window.location.reload()
   }
 
-  if (step === 'verify') {
+  function deleteAccount() {
+    if (!window.confirm("Delete your account? This cannot be undone.")) return
+    const users = getUsers().filter((u) => u.username !== currentUser.username)
+    saveUsers(users)
+    localStorage.removeItem("currentUser")
+    localStorage.removeItem("inArena")
+    window.location.reload()
+  }
+
+  if (currentUser) {
     return (
-      <div style={{ maxWidth: 400, margin: '40px auto', padding: 20, background: '#1e293b', borderRadius: 16, color: '#fff' }}>
-        <h2>Verify Email</h2>
-        <p style={{ fontSize: 13, opacity: 0.8 }}>We sent a 6-digit code to<br /><b>{pendingEmail}</b></p>
-        <form onSubmit={verify} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-          <input placeholder="Enter 6-digit code" value={code} onChange={e => setCode(e.target.value)} style={{ padding: 12, borderRadius: 8, fontSize: 18, textAlign: 'center', letterSpacing: 4 }} />
-          {err && <div style={{ color: '#f87171', fontSize: 13 }}>{err}</div>}
-          {info && <div style={{ color: '#4ade80', fontSize: 13 }}>{info}</div>}
-          <button style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 8, fontWeight: 700 }}>Verify Email</button>
-        </form>
-        <p style={{ fontSize: 13, textAlign: 'center' }}>Didn't get code? <a href="#" onClick={e => { e.preventDefault(); resend() }} style={{ color: '#60a5fa' }}>Resend Code</a></p>
-        <p style={{ fontSize: 13, textAlign: 'center' }}><a href="#" onClick={e => { e.preventDefault(); setStep('form') }} style={{ color: '#94a3b8' }}>Back to Login</a></p>
+      <div style={{ padding: 16, border: "1px solid #ddd", borderRadius: 12 }}>
+        <p>Logged in as <b>{currentUser.username}</b> - {currentUser.role}</p>
+        <p>Rating: {currentUser.rating || 1000}</p>
+        <button onClick={logout}>Logout</button>
+        <button onClick={deleteAccount} style={{ marginLeft: 8, color: "red" }}>Delete Account</button>
       </div>
     )
   }
 
   return (
-    <div style={{ maxWidth: 400, margin: '40px auto', padding: 20, background: '#1e293b', borderRadius: 16, color: '#fff' }}>
-      <h2>{mode === 'login' ? 'Login' : 'Register'}</h2>
-      <p style={{ fontSize: 13, opacity: 0.7 }}>Zed Gambit - Email Verified Accounts</p>
-      <form onSubmit={submit} style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-        {mode === 'register' && <input placeholder="Full Name e.g. Themba Ndhlovu" value={name} onChange={e => setName(e.target.value)} style={{ padding: 10, borderRadius: 8 }} />}
-        <input placeholder="Username" value={username} onChange={e => setUsername(e.target.value)} style={{ padding: 10, borderRadius: 8 }} />
-        {mode === 'register' && <input placeholder="Email e.g. themba@gmail.com" value={email} onChange={e => setEmail(e.target.value)} style={{ padding: 10, borderRadius: 8 }} />}
-        <input type="password" placeholder="Password (min 4 chars)" value={password} onChange={e => setPassword(e.target.value)} style={{ padding: 10, borderRadius: 8 }} />
-        {err && <div style={{ color: '#f87171', fontSize: 13 }}>{err}</div>}
-        {info && <div style={{ color: '#4ade80', fontSize: 13 }}>{info}</div>}
-        <button style={{ padding: 12, background: '#22c55e', border: 0, borderRadius: 8, fontWeight: 700 }}>{mode === 'login' ? 'Login' : 'Create Account & Send Code'}</button>
-      </form>
-      <p style={{ fontSize: 13, textAlign: 'center', marginTop: 12 }}>{mode === 'login' ? "No account? " : "Have account? "}<a href="#" onClick={e => { e.preventDefault(); setMode(mode === 'login' ? 'register' : 'login') }} style={{ color: '#60a5fa' }}>{mode === 'login' ? 'Register' : 'Login'}</a></p>
-      <p style={{ fontSize: 12, textAlign: 'center', marginTop: 8, opacity: 0.6 }}>Players and Administrator login here.<br />Mobile verification will be required later for payments only.</p>
+    <div style={{ padding: 16, border: "1px solid #ddd", borderRadius: 12, maxWidth: 320 }}>
+      <h3>{isAdmin ? "Admin Login" : "Player Login / Register"}</h3>
+
+      {!isAdmin && (
+        <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
+          <button onClick={() => setTab("login")}>Login</button>
+          <button onClick={() => setTab("register")}>Register</button>
+        </div>
+      )}
+
+      <input
+        placeholder="Username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        style={{ display: "block", width: "100%", marginBottom: 8, padding: 8 }}
+      />
+      <input
+        type="password"
+        placeholder="Password"
+        value={password}
+        onChange={(e) => setPassword(e.target.value)}
+        style={{ display: "block", width: "100%", marginBottom: 8, padding: 8 }}
+      />
+
+      <button onClick={tab === "register" && !isAdmin ? register : login} style={{ width: "100%", padding: 10 }}>
+        {isAdmin ? "Login as Admin" : tab === "register" ? "Register" : "Login"}
+      </button>
+
+      {message && <p>{message}</p>}
+      {isAdmin && <p style={{ fontSize: 12 }}>Admin link only. Not shown on website.</p>}
     </div>
   )
 }
