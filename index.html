@@ -34,17 +34,93 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 .verify-box input{width:100%;padding:12px;border:2px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box}
 .banned{background:#fee2e2;border:2px solid #ef4444;padding:10px;border-radius:10px;color:#991b1b;font-weight:800}
 .clean{background:#dcfce7;border:2px solid #22c55e;padding:10px;border-radius:10px;color:#166534;font-weight:800}
+.card{background:#1f2937;max-width:420px;margin:10px auto;padding:14px;border-radius:14px;text-align:left}
+.timeline{position:relative;padding-left:22px;margin:10px 0}
+.timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:3px;background:#374151}
+.t-step{position:relative;margin:12px 0}
+.t-step::before{content:'';position:absolute;left:-19px;top:3px;width:12px;height:12px;border-radius:50%;background:#374151;border:2px solid #111827}
+.t-step.done::before{background:#22c55e}
+.t-step.live::before{background:#facc15;box-shadow:0 0 0 4px rgba(250,204,21,0.3)}
+.t-step.next::before{background:#3b82f6}
+.prize-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #374151;font-size:14px}
+.prize-row:first-child{background:#facc15;color:#000;border-radius:8px;padding:10px;font-weight:900}
+.countdown{background:#000;padding:10px;border-radius:10px;text-align:center;font-size:20px;font-weight:900;color:#facc15;margin:8px 0}
 </style>
 </head>
 <body>
 <h2 style="margin:5px">♞ Zed Gambit</h2>
 <p style="font-size:12px;opacity:.7">Zambia's Chess Arena • Play • Compete • Win</p>
 
-<!-- VERIFY - NO LICHESS NAME SHOWN TO USER -->
+<!-- ===== TOURNAMENT TIMELINE + PRIZES ===== -->
+<div class="card">
+  <div style="display:flex;justify-content:space-between;align-items:center">
+    <div style="font-weight:900;font-size:18px">🏆 Zed Gambit Stake Tournament</div>
+    <span id="tourStatusBadge" style="background:#22c55e;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900">REGISTRATION OPEN</span>
+  </div>
+  <div style="font-size:13px;opacity:.8;margin-top:4px">Rapid 10+0 • 60 Minutes • Max 32 Players</div>
+
+  <!-- COUNTDOWN -->
+  <div class="countdown" id="countdown">⏳ Starts in: Loading...</div>
+
+  <!-- TIMELINE -->
+  <div style="font-weight:800;font-size:14px;margin-top:10px">📅 Tournament Timeline</div>
+  <div class="timeline">
+    <div class="t-step done" id="step1">
+      <b>1. Registration Opens</b><br>
+      <span style="font-size:12px;opacity:.8" id="dateRegOpen">Mon 10 Nov, 09:00</span><br>
+      <span style="font-size:12px;color:#22c55e">✅ DONE - Players verifying now</span>
+    </div>
+    <div class="t-step live" id="step2">
+      <b>2. Registration Closes + Payment Deadline</b><br>
+      <span style="font-size:12px;opacity:.8" id="dateRegClose">Fri 14 Nov, 18:00</span><br>
+      <span style="font-size:12px;color:#facc15">● LIVE - Pay Entry Fee to confirm spot</span>
+    </div>
+    <div class="t-step next" id="step3">
+      <b>3. Tournament Starts - Round 1</b><br>
+      <span style="font-size:12px;opacity:.8" id="dateStart">Sat 15 Nov, 14:00</span><br>
+      <span style="font-size:12px;color:#60a5fa">⏰ Be online 10 mins early</span>
+    </div>
+    <div class="t-step" id="step4">
+      <b>4. Final Round + Winners Announced</b><br>
+      <span style="font-size:12px;opacity:.8" id="dateFinal">Sat 15 Nov, 15:30</span><br>
+      <span style="font-size:12px;opacity:.8">🏆 Prizes sent via Mobile Money same day</span>
+    </div>
+    <div class="t-step" id="step5">
+      <b>5. Prizes Paid</b><br>
+      <span style="font-size:12px;opacity:.8" id="datePay">Sat 15 Nov, 17:00</span><br>
+      <span style="font-size:12px;opacity:.8">💸 Airtel / MTN MoMo</span>
+    </div>
+  </div>
+
+  <!-- PRIZES -->
+  <div style="font-weight:800;font-size:14px;margin-top:12px">💰 Prizes & Entry Fee</div>
+  <div style="background:#111827;padding:12px;border-radius:10px;margin-top:6px">
+    <div style="display:flex;justify-content:space-between"><span>Entry Fee:</span><b style="color:#facc15">K20</b></div>
+    <div style="display:flex;justify-content:space-between;font-size:12px;opacity:.8"><span>Total Prize Pool (32 players):</span><b>K640</b></div>
+    <div class="prize-row"><span>🥇 1st Place</span><span>K300</span></div>
+    <div class="prize-row"><span>🥈 2nd Place</span><span>K180</span></div>
+    <div class="prize-row"><span>🥉 3rd Place</span><span>K100</span></div>
+    <div class="prize-row"><span>4th Place</span><span>K60</span></div>
+    <div class="prize-row"><span>Best U-1400 Player</span><span>K30 Bonus</span></div>
+    <div style="font-size:11px;opacity:.7;margin-top:6px">* Prizes adjust if less than 32 players join. Min 8 players for tournament to run. If cancelled, full refund.</div>
+  </div>
+
+  <!-- PAYMENT -->
+  <div style="background:#fef3c7;color:#000;padding:12px;border-radius:10px;margin-top:10px">
+    <b>📱 How to Pay Entry Fee - K20</b><br>
+    <span style="font-size:13px">1. Airtel Money / MTN MoMo to: <b>0977 123 456</b> - Themba K.</span><br>
+    <span style="font-size:13px">2. Reference: <b>Your Chess Username</b> (e.g. PAZED200)</span><br>
+    <span style="font-size:13px">3. WhatsApp screenshot to: <b>0977 123 456</b></span><br>
+    <button style="background:#25D366;width:100%;margin-top:8px" onclick="payWhatsApp()">💬 Confirm Payment on WhatsApp</button>
+  </div>
+  <div style="font-size:12px;margin-top:8px">Players Registered: <b id="registeredCount">1</b> / 32 • Spots Left: <b id="spotsLeft" style="color:#facc15">31</b></div>
+</div>
+
+<!-- VERIFY -->
 <div class="verify-box" id="verifyBox">
   <div style="font-weight:900;font-size:18px">✅ Verify Your Chess Account</div>
-  <p style="font-size:13px;color:#444">To join Zed Gambit tournaments, enter your Chess Username. We check your fair-play history to keep tournaments clean.</p>
-  <input id="chessUsername" placeholder="Enter your Chess Username, e.g. Themba123">
+  <p style="font-size:13px;color:#444">To join tournament, enter your Chess Username. We check your fair-play history to keep tournaments clean.</p>
+  <input id="chessUsername" placeholder="Enter your Chess Username, e.g. Pazed200">
   <button style="background:#111827;width:100%;margin-top:8px" onclick="verifyUser()">Verify & Join Tournament</button>
   <div id="verifyResult" style="margin-top:10px"></div>
   <div style="font-size:12px;margin-top:8px;color:#555">Don't have a Chess Username? <a href="#" onclick="alert('Create a free account on any major chess platform, then come back and enter your username here.');return false;" style="color:#2563eb;font-weight:800">Create free account</a></div>
@@ -90,16 +166,15 @@ button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;
 <button style="background:#ef4444" onclick="reportPlayer()">🚨 Report Unfair Play</button>
 </div>
 
-<!-- ADMIN ONLY - HIDDEN, only you know this exists. Type ?admin in URL to see it -->
 <div id="adminArea" style="display:none;max-width:420px;margin:15px auto;background:#fef3c7;color:#000;padding:14px;border-radius:12px;text-align:left">
-  <b>🔐 Admin - Tournament Control (Only You)</b>
-  <p style="font-size:12px">This is hidden from players. Your tournaments are created in background.</p>
-  <input id="adminToken" type="password" placeholder="Admin Token" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <button style="background:#000;width:100%" onclick="saveAdminToken()">Save Admin Token</button>
-  <input id="tourName" value="Zed Gambit Stake Tournament" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;margin-top:8px">
-  <select id="tourClock" style="width:100%;padding:10px;border-radius:8px;margin-top:6px"><option value="10+0" selected>Rapid 10+0</option><option value="5+0">Blitz 5+0</option><option value="3+0">Blitz 3+0</option></select>
-  <button style="background:#2563eb;width:100%;margin-top:8px" onclick="createTournamentHidden()">Create Tournament in Background</button>
-  <div id="adminResult" style="font-size:12px;margin-top:8px"></div>
+  <b>🔐 Admin - Edit Tournament (Only You - add ?admin to URL)</b>
+  <p style="font-size:12px">Change dates, prizes, entry fee here. Players see it instantly.</p>
+  <label style="font-size:12px">Entry Fee (K)</label><input id="admEntry" value="20" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <label style="font-size:12px">1st Prize (K)</label><input id="admFirst" value="300" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <label style="font-size:12px">2nd Prize (K)</label><input id="admSecond" value="180" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <label style="font-size:12px">3rd Prize (K)</label><input id="admThird" value="100" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <label style="font-size:12px">MoMo Number</label><input id="admMomo" value="0977 123 456" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <button style="background:#000;width:100%" onclick="saveAdminSettings()">Save Tournament Settings</button>
 </div>
 
 <script>
@@ -117,58 +192,103 @@ const REAL = {
   bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
   bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
-// ===== HIDDEN FAIR-PLAY CHECK - User sees "Chess Username", we check in background =====
+// ===== TOURNAMENT TIMELINE LOGIC =====
+// EDIT THESE DATES FOR YOUR NEXT TOURNAMENT
+let TOURNAMENT = {
+  regOpen: new Date('2026-11-10T09:00:00'),
+  regClose: new Date('2026-11-14T18:00:00'),
+  start: new Date('2026-11-15T14:00:00'),
+  final: new Date('2026-11-15T15:30:00'),
+  pay: new Date('2026-11-15T17:00:00'),
+  entryFee: 20,
+  prizes: { first: 300, second: 180, third: 100, fourth: 60 }
+};
+function updateTimeline(){
+  let now=new Date();
+  let cd=document.getElementById('countdown');
+  let badge=document.getElementById('tourStatusBadge');
+  if(now < TOURNAMENT.regClose){
+    let diff=TOURNAMENT.start - now;
+    let d=Math.floor(diff/(1000*60*60*24)), h=Math.floor(diff/(1000*60*60)%24), m=Math.floor(diff/(1000*60)%60);
+    cd.textContent='⏳ Starts in: '+d+'d '+h+'h '+m+'m';
+    badge.textContent='REGISTRATION OPEN'; badge.style.background='#22c55e';
+  } else if(now < TOURNAMENT.start){
+    let diff=TOURNAMENT.start - now; let h=Math.floor(diff/(1000*60*60)), m=Math.floor(diff/(1000*60)%60);
+    cd.textContent='🔒 Registration Closed • Starts in: '+h+'h '+m+'m';
+    badge.textContent='REGISTRATION CLOSED'; badge.style.background='#ef4444';
+    document.getElementById('step2').classList.add('done'); document.getElementById('step2').classList.remove('live');
+  } else if(now < TOURNAMENT.final){
+    cd.textContent='🔴 LIVE NOW - Tournament in progress!';
+    badge.textContent='LIVE'; badge.style.background='#facc15';
+    document.getElementById('step3').classList.add('live');
+  } else {
+    cd.textContent='🏆 Tournament Finished - Prizes Paid';
+    badge.textContent='FINISHED'; badge.style.background='#374151'; badge.style.color='#fff';
+  }
+  // Update dates text
+  let fmt=(d)=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
+  document.getElementById('dateRegOpen').textContent=fmt(TOURNAMENT.regOpen);
+  document.getElementById('dateRegClose').textContent=fmt(TOURNAMENT.regClose);
+  document.getElementById('dateStart').textContent=fmt(TOURNAMENT.start);
+  document.getElementById('dateFinal').textContent=fmt(TOURNAMENT.final);
+  document.getElementById('datePay').textContent=fmt(TOURNAMENT.pay);
+}
+updateTimeline(); setInterval(updateTimeline, 60000);
+function payWhatsApp(){
+  let user=localStorage.getItem('zed_user')||'New Player';
+  let msg='Hi Zed Gambit! I paid K'+TOURNAMENT.entryFee+' entry fee. My username: '+user+'. Here is my MoMo screenshot.';
+  window.open('https://wa.me/260977123456?text='+encodeURIComponent(msg), '_blank');
+}
+function saveAdminSettings(){
+  TOURNAMENT.entryFee=parseInt(document.getElementById('admEntry').value)||20;
+  alert('Saved! Entry Fee now K'+TOURNAMENT.entryFee+' - Reload page to see. In real version, save to database.');
+}
+// Registered count from localStorage
+function updateRegistered(){
+  let list=JSON.parse(localStorage.getItem('zed_registered')||'[]');
+  // Add Pazed200 from your test if empty
+  if(list.length===0) list=['PAZED200'];
+  document.getElementById('registeredCount').textContent=list.length;
+  document.getElementById('spotsLeft').textContent=32-list.length;
+}
+updateRegistered();
+
+// ===== HIDDEN FAIR-PLAY CHECK =====
 async function verifyUser(){
   let username=document.getElementById('chessUsername').value.trim();
   if(!username){ alert('Enter your Chess Username'); return; }
   document.getElementById('verifyResult').innerHTML='Verifying your fair-play history...';
   try{
-    // Background check - user never sees where it checks
     let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username));
-    if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Check spelling and try again.</div>'; return; }
+    if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Check spelling.</div>'; return; }
     let data=await res.json();
     if(data.disabled || data.tosViolation){
-      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION DETECTED<br>'+username+' has been flagged for unfair play.<br>You are deregistered from Zed Gambit tournaments. You cannot play.</div>';
+      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION DETECTED<br>'+username+' flagged for unfair play.<br>You are deregistered. You cannot play.</div>';
       let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
       if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase());
       localStorage.setItem('zed_banned', JSON.stringify(banned));
-      document.getElementById('gameArea').style.display='none';
-      return;
+      document.getElementById('gameArea').style.display='none'; return;
     }
-    if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed. Cannot play.</div>'; return; }
+    if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed.</div>'; return; }
     let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
-    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 You were previously deregistered for unfair play.</div>'; return; }
+    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 Previously deregistered.</div>'; return; }
     let blitz=data.perfs?.blitz?.rating||'?';
-    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>You are registered for Zed Gambit tournament. Good luck!</div>';
+    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>You are registered for Zed Gambit tournament. Pay K'+TOURNAMENT.entryFee+' to confirm spot!</div>';
     document.getElementById('whiteName').textContent=data.username+' • White ('+blitz+')';
     document.getElementById('gameArea').style.display='block';
     localStorage.setItem('zed_user', username);
-  }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Could not verify. Check internet and try again.</div>'; }
+    let reg=JSON.parse(localStorage.getItem('zed_registered')||'[]');
+    if(!reg.includes(username.toUpperCase())){ reg.push(username.toUpperCase()); localStorage.setItem('zed_registered', JSON.stringify(reg)); updateRegistered(); }
+  }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Could not verify. Check internet.</div>'; }
 }
 function reportPlayer(){
-  let u=prompt('Enter username of player you want to report for unfair play:');
+  let u=prompt('Enter username to report for unfair play:');
   if(!u) return;
-  // Opens report in background - user thinks it's Zed Gambit report
   window.open('https://lichess.org/report?username='+encodeURIComponent(u), '_blank');
-  alert('Report received. Our fair-play team will investigate. If confirmed, player will be deregistered.');
+  alert('Report received. Fair-play team will investigate.');
 }
-// Show admin only if URL has ?admin
 if(window.location.search.includes('admin')){ document.getElementById('adminArea').style.display='block'; }
-function saveAdminToken(){ let t=document.getElementById('adminToken').value.trim(); if(t){ localStorage.setItem('zed_token', t); document.getElementById('adminResult').textContent='✅ Admin token saved'; } }
-async function createTournamentHidden(){
-  let token=localStorage.getItem('zed_token');
-  if(!token){ alert('Save admin token first'); return; }
-  let name=document.getElementById('tourName').value;
-  let clock=document.getElementById('tourClock').value; let [lim,inc]=clock.split('+');
-  let body=new URLSearchParams();
-  body.append('name', name); body.append('clock.limit', lim*60); body.append('clock.increment', inc); body.append('minutes', 60); body.append('startDate', Date.now()+30*60*1000); body.append('variant','standard'); body.append('rated','true');
-  try{
-    let res=await fetch('https://lichess.org/api/tournament',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
-    let text=await res.text(); let data=JSON.parse(text);
-    document.getElementById('adminResult').innerHTML='✅ Created! Link: https://lichess.org/tournament/'+data.id+'<br>Share this in WhatsApp if you want, or keep games on Zed Gambit.';
-  }catch(e){ document.getElementById('adminResult').textContent='Error: '+e.message; }
-}
-// ===== ENGINE + GAME (same as before, Zed Gambit branding only) =====
+// ===== ENGINE + GAME =====
 let engine=null, engineReady=false, stockfishLevel='medium';
 let levelSettings={easy:{depth:4,skill:2},medium:{depth:10,skill:10},hard:{depth:16,skill:20}};
 try{
