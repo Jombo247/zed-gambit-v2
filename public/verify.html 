@@ -1,0 +1,18 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify</title>
+<style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:20px}input{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:0}button{width:100%;padding:14px;background:#22c55e;border:0;border-radius:10px;font-weight:700}</style></head>
+<body><h2>Verify Email & Phone</h2><p>Enter 6-digit code we sent</p>
+<input id="c" placeholder="123456">
+<button onclick="doVerify()">Verify & Unlock Wallet</button><p id="msg"></p>
+<script>
+function doVerify(){
+  const pending=JSON.parse(localStorage.getItem('zg_pending')||'{}');
+  const entered=document.getElementById('c').value;
+  if(entered===pending.code){
+    pending.verified=true;
+    localStorage.setItem('zg_user', JSON.stringify(pending));
+    localStorage.setItem('zg_verified','yes');
+    alert('Verified! Wallet + Rated Tournaments unlocked');
+    location.href='/';
+  } else { document.getElementById('msg').innerText='Wrong code, try again'; }
+}
+</script></body></html>
