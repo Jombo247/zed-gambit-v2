@@ -76,6 +76,38 @@ function fixArenaText() {
 // Run it every 1 sec like fixWallet
 setInterval(fixArenaText, 1000);
 fixArenaText();
+// Fix profile card to show logged-in user, not Themba
+function fixProfile() {
+  // Find who is logged in from top text
+  const topText = document.body.innerText || "";
+  const m = topText.match(/Logged in as (\w+)/);
+  if (!m) return;
+  const realUser = m[1]; // Zanda
+  const ratingMatch = topText.match(/Rating:\s*(\d+)/);
+  const balMatch = topText.match(/Balance:\s*(\d+)/);
+  const realRating = ratingMatch ? ratingMatch[1] : "1000";
+  const realBal = balMatch ? balMatch[1] : "0";
+
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length === 0 && el.textContent) {
+      if (el.textContent.includes('Themba Ndhlovu')) {
+        el.textContent = el.textContent.replace('Themba Ndhlovu', realUser);
+      }
+      if (el.textContent.includes('1200') && el.textContent.includes('Online')) {
+        el.textContent = el.textContent.replace('1200', realRating);
+      }
+      if (el.textContent.trim() === 'K900') {
+        el.textContent = 'K' + realBal;
+      }
+      if (el.textContent.includes('43 pts')) {
+        el.textContent = el.textContent.replace('43 pts', '0 pts').replace('18 games', '0 games').replace('Streak: 2', 'Streak: 0');
+      }
+    }
+  });
+}
+setInterval(fixProfile, 1000);
+fixProfile();
+
 
 
 
