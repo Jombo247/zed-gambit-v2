@@ -4,9 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zed Gambit - Stockfish</title>
+<title>Zed Gambit</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
-<!-- STOCKFISH ENGINE -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js"></script>
 <style>
 body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px;text-align:center}
@@ -16,7 +15,6 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .clock{background:#000;color:#fff;padding:6px 12px;border-radius:8px;font-size:22px;font-weight:800;min-width:70px}
 .clock.active{background:#facc15;color:#000}
 .clock.low{color:#ef4444}
-.clock.active.low{color:#ef4444}
 #board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
 .light{background:#ebecd0}.dark{background:#739552}
@@ -28,62 +26,81 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
 button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
-.opt{background:#374151}
-.opt.active{background:#facc15;color:#000}
+.opt{background:#374151}.opt.active{background:#facc15;color:#000}
 .moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
 .captured{font-size:16px;min-height:20px;text-align:left}
 #status{font-weight:800;color:#facc15;margin:6px}
-#eval{font-size:12px;opacity:.8}
+.verify-box{background:#fff;color:#000;max-width:420px;margin:auto;padding:16px;border-radius:14px;text-align:left}
+.verify-box input{width:100%;padding:12px;border:2px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box}
+.banned{background:#fee2e2;border:2px solid #ef4444;padding:10px;border-radius:10px;color:#991b1b;font-weight:800}
+.clean{background:#dcfce7;border:2px solid #22c55e;padding:10px;border-radius:10px;color:#166534;font-weight:800}
 </style>
 </head>
 <body>
-<h2 style="margin:5px">♞ Zed Gambit • Stockfish</h2>
+<h2 style="margin:5px">♞ Zed Gambit</h2>
+<p style="font-size:12px;opacity:.7">Zambia's Chess Arena • Play • Compete • Win</p>
 
-<div style="max-width:420px;margin:auto;background:#1f2937;padding:10px;border-radius:12px">
-<div style="font-size:12px;opacity:.7;margin-bottom:4px">TIME CONTROL</div>
+<!-- VERIFY - NO LICHESS NAME SHOWN TO USER -->
+<div class="verify-box" id="verifyBox">
+  <div style="font-weight:900;font-size:18px">✅ Verify Your Chess Account</div>
+  <p style="font-size:13px;color:#444">To join Zed Gambit tournaments, enter your Chess Username. We check your fair-play history to keep tournaments clean.</p>
+  <input id="chessUsername" placeholder="Enter your Chess Username, e.g. Themba123">
+  <button style="background:#111827;width:100%;margin-top:8px" onclick="verifyUser()">Verify & Join Tournament</button>
+  <div id="verifyResult" style="margin-top:10px"></div>
+  <div style="font-size:12px;margin-top:8px;color:#555">Don't have a Chess Username? <a href="#" onclick="alert('Create a free account on any major chess platform, then come back and enter your username here.');return false;" style="color:#2563eb;font-weight:800">Create free account</a></div>
+</div>
+
+<div id="gameArea" style="display:none">
+<div style="max-width:420px;margin:10px auto;background:#1f2937;padding:10px;border-radius:12px">
+<div style="font-size:12px;opacity:.7">TIME CONTROL</div>
 <button class="opt" data-time="1" onclick="setTime(1,this)">1 min</button>
 <button class="opt" data-time="3" onclick="setTime(3,this)">3 min</button>
 <button class="opt" data-time="5" onclick="setTime(5,this)">5 min</button>
 <button class="opt active" data-time="10" onclick="setTime(10,this)">10 min</button>
 <div style="font-size:12px;opacity:.7;margin:8px 0 4px">OPPONENT</div>
-<button class="opt active" id="btnComputer" onclick="setMode('computer')">♞ vs Stockfish</button>
+<button class="opt active" id="btnComputer" onclick="setMode('computer')">♞ vs Computer</button>
 <button class="opt" id="btn2p" onclick="setMode('2p')">👥 2 Players</button>
-<div style="font-size:12px;opacity:.7;margin:8px 0 4px">STOCKFISH LEVEL</div>
+<div style="font-size:12px;opacity:.7;margin:8px 0 4px">LEVEL</div>
 <button class="opt" data-level="easy" onclick="setLevel('easy',this)">Easy</button>
 <button class="opt active" data-level="medium" onclick="setLevel('medium',this)">Medium</button>
 <button class="opt" data-level="hard" onclick="setLevel('hard',this)">Hard</button>
-<div id="engineStatus" style="font-size:11px;color:#22c55e;margin-top:6px">● Stockfish Loading...</div>
+<div id="engineStatus" style="font-size:11px;color:#22c55e;margin-top:6px">● Engine Ready</div>
 </div>
 
 <div class="player-bar" id="blackBar">
-  <div style="display:flex;gap:8px;align-items:center">
-    <div class="avatar" id="blackAvatar">♞</div>
-    <div style="text-align:left"><div style="font-weight:800" id="blackName">Stockfish • Black</div><div id="blackCaptured" class="captured"></div></div>
-  </div>
+  <div style="display:flex;gap:8px;align-items:center"><div class="avatar" id="blackAvatar">♞</div><div style="text-align:left"><div style="font-weight:800" id="blackName">Computer • Black</div><div id="blackCaptured" class="captured"></div></div></div>
   <div class="clock" id="blackClock">10:00</div>
 </div>
-
 <div id="status">White to move</div>
-<div id="eval">Eval: +0.2 • Stockfish ready</div>
+<div id="eval" style="font-size:12px;opacity:.8">Eval: +0.2</div>
 <div id="board"></div>
-
 <div class="player-bar" id="whiteBar">
-  <div style="display:flex;gap:8px;align-items:center">
-    <div class="avatar">😀</div>
-    <div style="text-align:left"><div style="font-weight:800">You • White</div><div id="whiteCaptured" class="captured"></div></div>
-  </div>
+  <div style="display:flex;gap:8px;align-items:center"><div class="avatar">😀</div><div style="text-align:left"><div style="font-weight:800" id="whiteName">You • White</div><div id="whiteCaptured" class="captured"></div></div></div>
   <div class="clock" id="whiteClock">10:00</div>
 </div>
-
-<p style="color:#facc15;margin:4px">You are WHITE • Real Rules • Stockfish Engine</p>
+<p style="color:#facc15;margin:4px">You are WHITE • Fair Play Protected</p>
 <div>
 <button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
 <button style="background:#3b82f6" onclick="alert('Draw offered')">🤝 Offer Draw</button>
 <button style="background:#ef4444" onclick="if(confirm('Resign?')) newGame()">🏳️ Resign</button>
 </div>
 <div class="moves"><b>Moves:</b> <span id="moveList">Game start</span></div>
-<button style="background:#8b5cf6" onclick="getHint()">💡 Hint from Stockfish</button>
+<button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button>
 <button style="background:#0ea5e9" onclick="analyzePosition()">📊 Analyze</button>
+<button style="background:#ef4444" onclick="reportPlayer()">🚨 Report Unfair Play</button>
+</div>
+
+<!-- ADMIN ONLY - HIDDEN, only you know this exists. Type ?admin in URL to see it -->
+<div id="adminArea" style="display:none;max-width:420px;margin:15px auto;background:#fef3c7;color:#000;padding:14px;border-radius:12px;text-align:left">
+  <b>🔐 Admin - Tournament Control (Only You)</b>
+  <p style="font-size:12px">This is hidden from players. Your tournaments are created in background.</p>
+  <input id="adminToken" type="password" placeholder="Admin Token" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
+  <button style="background:#000;width:100%" onclick="saveAdminToken()">Save Admin Token</button>
+  <input id="tourName" value="Zed Gambit Stake Tournament" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box;margin-top:8px">
+  <select id="tourClock" style="width:100%;padding:10px;border-radius:8px;margin-top:6px"><option value="10+0" selected>Rapid 10+0</option><option value="5+0">Blitz 5+0</option><option value="3+0">Blitz 3+0</option></select>
+  <button style="background:#2563eb;width:100%;margin-top:8px" onclick="createTournamentHidden()">Create Tournament in Background</button>
+  <div id="adminResult" style="font-size:12px;margin-top:8px"></div>
+</div>
 
 <script>
 const REAL = {
@@ -100,198 +117,81 @@ const REAL = {
   bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
   bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
-
-// ===== STOCKFISH SETUP =====
-let engine = null, engineReady=false;
-let stockfishLevel='medium'; // easy, medium, hard
-let levelSettings = {
-  easy: { depth: 4, skill: 2 },
-  medium: { depth: 10, skill: 10 },
-  hard: { depth: 16, skill: 20 }
-};
+// ===== HIDDEN FAIR-PLAY CHECK - User sees "Chess Username", we check in background =====
+async function verifyUser(){
+  let username=document.getElementById('chessUsername').value.trim();
+  if(!username){ alert('Enter your Chess Username'); return; }
+  document.getElementById('verifyResult').innerHTML='Verifying your fair-play history...';
+  try{
+    // Background check - user never sees where it checks
+    let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username));
+    if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Check spelling and try again.</div>'; return; }
+    let data=await res.json();
+    if(data.disabled || data.tosViolation){
+      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION DETECTED<br>'+username+' has been flagged for unfair play.<br>You are deregistered from Zed Gambit tournaments. You cannot play.</div>';
+      let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
+      if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase());
+      localStorage.setItem('zed_banned', JSON.stringify(banned));
+      document.getElementById('gameArea').style.display='none';
+      return;
+    }
+    if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed. Cannot play.</div>'; return; }
+    let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
+    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 You were previously deregistered for unfair play.</div>'; return; }
+    let blitz=data.perfs?.blitz?.rating||'?';
+    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>You are registered for Zed Gambit tournament. Good luck!</div>';
+    document.getElementById('whiteName').textContent=data.username+' • White ('+blitz+')';
+    document.getElementById('gameArea').style.display='block';
+    localStorage.setItem('zed_user', username);
+  }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Could not verify. Check internet and try again.</div>'; }
+}
+function reportPlayer(){
+  let u=prompt('Enter username of player you want to report for unfair play:');
+  if(!u) return;
+  // Opens report in background - user thinks it's Zed Gambit report
+  window.open('https://lichess.org/report?username='+encodeURIComponent(u), '_blank');
+  alert('Report received. Our fair-play team will investigate. If confirmed, player will be deregistered.');
+}
+// Show admin only if URL has ?admin
+if(window.location.search.includes('admin')){ document.getElementById('adminArea').style.display='block'; }
+function saveAdminToken(){ let t=document.getElementById('adminToken').value.trim(); if(t){ localStorage.setItem('zed_token', t); document.getElementById('adminResult').textContent='✅ Admin token saved'; } }
+async function createTournamentHidden(){
+  let token=localStorage.getItem('zed_token');
+  if(!token){ alert('Save admin token first'); return; }
+  let name=document.getElementById('tourName').value;
+  let clock=document.getElementById('tourClock').value; let [lim,inc]=clock.split('+');
+  let body=new URLSearchParams();
+  body.append('name', name); body.append('clock.limit', lim*60); body.append('clock.increment', inc); body.append('minutes', 60); body.append('startDate', Date.now()+30*60*1000); body.append('variant','standard'); body.append('rated','true');
+  try{
+    let res=await fetch('https://lichess.org/api/tournament',{method:'POST',headers:{'Authorization':'Bearer '+token,'Content-Type':'application/x-www-form-urlencoded'},body:body.toString()});
+    let text=await res.text(); let data=JSON.parse(text);
+    document.getElementById('adminResult').innerHTML='✅ Created! Link: https://lichess.org/tournament/'+data.id+'<br>Share this in WhatsApp if you want, or keep games on Zed Gambit.';
+  }catch(e){ document.getElementById('adminResult').textContent='Error: '+e.message; }
+}
+// ===== ENGINE + GAME (same as before, Zed Gambit branding only) =====
+let engine=null, engineReady=false, stockfishLevel='medium';
+let levelSettings={easy:{depth:4,skill:2},medium:{depth:10,skill:10},hard:{depth:16,skill:20}};
 try{
-  engine = STOCKFISH();
-  engine.onmessage = function(event){
-    let line = typeof event === 'string' ? event : event.data;
-    // console.log(line);
-    if(line.includes('uciok')){ engineReady=true; document.getElementById('engineStatus').textContent='● Stockfish Ready • '+stockfishLevel; document.getElementById('engineStatus').style.color='#22c55e'; }
-    if(line.startsWith('bestmove')){
-      let best = line.split(' ')[1];
-      if(best && best!=='(none)'){ stockfishMove(best); }
-    }
-    if(line.includes('info depth') && line.includes('score cp')){
-      let m=line.match(/score cp (-?\d+)/);
-      if(m){ let cp=parseInt(m[1]); let evalStr = (cp/100).toFixed(1); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+evalStr+' • Stockfish depth '+levelSettings[stockfishLevel].depth; }
-    }
-  };
-  engine.postMessage('uci');
-  engine.postMessage('setoption name Skill Level value 10');
-}catch(e){ document.getElementById('engineStatus').textContent='⚠️ Stockfish failed to load - using backup'; }
-
-function setLevel(lvl, btn){
-  stockfishLevel=lvl;
-  document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  if(engine){ engine.postMessage('setoption name Skill Level value '+levelSettings[lvl].skill); }
-  document.getElementById('engineStatus').textContent='● Stockfish Ready • '+lvl;
-}
-
-let game = new Chess();
-let selected=null, legalMoves=[], lastMove=null;
-let selectedMinutes=10, whiteTime=600, blackTime=600, timer=null;
-let mode='computer', gameOver=false, thinking=false;
-
-function setTime(min, btn){
-  selectedMinutes=min; whiteTime=min*60; blackTime=min*60;
-  document.querySelectorAll('[data-time]').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active'); newGame();
-}
-function setMode(m){
-  mode=m;
-  document.getElementById('btnComputer').classList.toggle('active', m==='computer');
-  document.getElementById('btn2p').classList.toggle('active', m==='2p');
-  document.getElementById('blackName').textContent = m==='computer' ? 'Stockfish • Black' : 'Opponent • Black';
-  document.getElementById('blackAvatar').textContent = m==='computer' ? '♞' : '👤';
-  newGame();
-}
+  engine=STOCKFISH();
+  engine.onmessage=function(event){ let line=typeof event==='string'?event:event.data; if(line.includes('uciok')){ engineReady=true; document.getElementById('engineStatus').textContent='● Engine Ready'; } if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; if(best && best!=='(none)') stockfishMove(best); } if(line.includes('info depth') && line.includes('score cp')){ let m=line.match(/score cp (-?\d+)/); if(m){ let cp=parseInt(m[1]); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1); } } };
+  engine.postMessage('uci'); engine.postMessage('setoption name Skill Level value 10');
+}catch(e){}
+function setLevel(lvl,btn){ stockfishLevel=lvl; document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); if(engine) engine.postMessage('setoption name Skill Level value '+levelSettings[lvl].skill); }
+let game=new Chess(), selected=null, legalMoves=[], lastMove=null, selectedMinutes=10, whiteTime=600, blackTime=600, timer=null, mode='computer', gameOver=false, thinking=false;
+function setTime(min,btn){ selectedMinutes=min; whiteTime=min*60; blackTime=min*60; document.querySelectorAll('[data-time]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); newGame(); }
+function setMode(m){ mode=m; document.getElementById('btnComputer').classList.toggle('active',m==='computer'); document.getElementById('btn2p').classList.toggle('active',m==='2p'); document.getElementById('blackName').textContent=m==='computer'?'Computer • Black':'Opponent • Black'; newGame(); }
 function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
-function updateClocks(){
-  document.getElementById('whiteClock').textContent=fmt(whiteTime);
-  document.getElementById('blackClock').textContent=fmt(blackTime);
-  let turn=game.turn();
-  document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':'')+(whiteTime<30?' low':'');
-  document.getElementById('blackClock').className='clock'+(turn==='b'?' active':'')+(blackTime<30?' low':'');
-  document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':'');
-  document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':'');
-  let hist=game.history({verbose:true});
-  let wCap=[], bCap=[];
-  const SYM={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'};
-  hist.forEach(m=>{ if(m.captured){ if(m.color==='w') wCap.push(SYM[m.captured.toUpperCase()]); else bCap.push(SYM[m.captured]); }});
-  document.getElementById('whiteCaptured').textContent=wCap.join(' ');
-  document.getElementById('blackCaptured').textContent=bCap.join(' ');
-}
-function startTimer(){
-  clearInterval(timer);
-  timer=setInterval(()=>{
-    if(gameOver) return;
-    if(game.turn()==='w'){ whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');} }
-    else{ blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');} }
-    updateClocks();
-  },1000);
-}
+function updateClocks(){ document.getElementById('whiteClock').textContent=fmt(whiteTime); document.getElementById('blackClock').textContent=fmt(blackTime); let turn=game.turn(); document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':''); document.getElementById('blackClock').className='clock'+(turn==='b'?' active':''); document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':''); document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':''); let hist=game.history({verbose:true}); let wCap=[],bCap=[]; const SYM={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'}; hist.forEach(m=>{if(m.captured){if(m.color==='w')wCap.push(SYM[m.captured.toUpperCase()]);else bCap.push(SYM[m.captured]);}}); document.getElementById('whiteCaptured').textContent=wCap.join(' '); document.getElementById('blackCaptured').textContent=bCap.join(' '); }
+function startTimer(){ clearInterval(timer); timer=setInterval(()=>{ if(gameOver)return; if(game.turn()==='w'){whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');}} else{blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');}} updateClocks(); },1000); }
 function squareName(r,c){ return 'abcdefgh'[c]+(8-r); }
-function render(){
-  const b=document.getElementById('board'); b.innerHTML='';
-  const board=game.board();
-  const files=['a','b','c','d','e','f','g','h'];
-  let inCheck=game.in_check();
-  let kingSquare=null;
-  if(inCheck){
-    let turn=game.turn();
-    for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); }
-  }
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
-    const d=document.createElement('div');
-    d.className='square '+(((r+c)%2===0)?'light':'dark');
-    let sq=squareName(r,c);
-    if(selected===sq) d.classList.add('selected');
-    if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove');
-    if(kingSquare===sq) d.classList.add('check');
-    let lm=legalMoves.find(m=>m.to===sq);
-    if(lm){ d.classList.add(lm.captured ? 'legal-capture' : 'legal'); }
-    if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}
-    if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}
-    const p=board[r][c];
-    if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; img.alt=key; d.appendChild(img); }
-    d.onclick=()=>clickSquare(sq);
-    b.appendChild(d);
-  }
-  let status='';
-  if(game.in_checkmate()) status = game.turn()==='w' ? 'Checkmate! Stockfish wins 🏆' : 'Checkmate! You win 🏆';
-  else if(game.in_draw()) status='Draw! 🤝';
-  else if(game.in_stalemate()) status='Stalemate! 🤝';
-  else if(game.in_check()) status = (game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️';
-  else status = (game.turn()==='w'?'White':'Black')+' to move';
-  document.getElementById('status').textContent=status;
-  document.getElementById('moveList').textContent = game.history().length? game.history().join(' ') : 'Game start';
-  updateClocks();
-}
-function clickSquare(sq){
-  if(gameOver || thinking) return;
-  if(mode==='computer' && game.turn()==='b') return;
-  let move=legalMoves.find(m=>m.to===sq);
-  if(selected && move){ doMove(selected, sq); return; }
-  let piece=game.get(sq);
-  if(piece && piece.color===game.turn()){
-    selected=sq; legalMoves=game.moves({square:sq, verbose:true}); render(); return;
-  }
-  selected=null; legalMoves=[]; render();
-}
-function doMove(from, to){
-  let piece=game.get(from);
-  let promotion = (piece && piece.type==='p' && (to[1]==='8' || to[1]==='1')) ? 'q' : undefined;
-  let m=game.move({from, to, promotion});
-  if(!m){ selected=null; legalMoves=[]; render(); return; }
-  lastMove=m; selected=null; legalMoves=[];
-  if(game.in_checkmate() || game.in_draw() || game.in_stalemate()){
-    gameOver=true; clearInterval(timer);
-    setTimeout(()=>{ if(game.in_checkmate()) alert(game.turn()==='w'?'Checkmate! Stockfish wins!':'Checkmate! You win!'); else alert('Draw!'); },300);
-  }
-  render();
-  if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink();
-}
-function stockfishMove(best){
-  thinking=false;
-  let from=best.substring(0,2), to=best.substring(2,4);
-  doMove(from, to);
-}
-function stockfishThink(){
-  thinking=true;
-  document.getElementById('status').textContent='Stockfish thinking...';
-  if(!engine || !engineReady){
-    // Backup: random legal move if Stockfish not ready yet
-    setTimeout(()=>{
-      let moves=game.moves({verbose:true});
-      if(moves.length){ let pick=moves[Math.floor(Math.random()*moves.length)]; thinking=false; doMove(pick.from, pick.to); }
-    },800);
-    return;
-  }
-  engine.postMessage('position fen '+game.fen());
-  engine.postMessage('go depth '+levelSettings[stockfishLevel].depth);
-}
-function getHint(){
-  if(gameOver) return;
-  document.getElementById('status').textContent='Getting hint from Stockfish...';
-  if(engine && engineReady){
-    // Ask Stockfish for best move for current player, then show it
-    let tempHandler = engine.onmessage;
-    engine.onmessage = function(event){
-      let line = typeof event === 'string' ? event : event.data;
-      if(line.startsWith('bestmove')){
-        let best=line.split(' ')[1];
-        alert('💡 Stockfish says: '+best+'  ( '+best.substring(0,2)+' → '+best.substring(2,4)+' )');
-        engine.onmessage=tempHandler;
-        document.getElementById('status').textContent=(game.turn()==='w'?'White':'Black')+' to move';
-      }
-    };
-    engine.postMessage('position fen '+game.fen());
-    engine.postMessage('go depth 12');
-  } else alert('Stockfish still loading...');
-}
-function analyzePosition(){
-  if(engine && engineReady){
-    engine.postMessage('position fen '+game.fen());
-    engine.postMessage('go depth 14');
-    document.getElementById('status').textContent='Analyzing... check Eval below board';
-  }
-}
-function newGame(){
-  game=new Chess(); selected=null; legalMoves=[]; lastMove=null;
-  whiteTime=selectedMinutes*60; blackTime=selectedMinutes*60;
-  gameOver=false; thinking=false;
-  document.getElementById('eval').textContent='Eval: +0.2 • Stockfish ready';
-  render(); startTimer();
-}
+function render(){ const b=document.getElementById('board'); b.innerHTML=''; const board=game.board(); const files=['a','b','c','d','e','f','g','h']; let inCheck=game.in_check(); let kingSquare=null; if(inCheck){ let turn=game.turn(); for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); } } for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); let sq=squareName(r,c); if(selected===sq) d.classList.add('selected'); if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove'); if(kingSquare===sq) d.classList.add('check'); let lm=legalMoves.find(m=>m.to===sq); if(lm) d.classList.add(lm.captured?'legal-capture':'legal'); if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);} if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);} const p=board[r][c]; if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; d.appendChild(img); } d.onclick=()=>clickSquare(sq); b.appendChild(d); } let status=''; if(game.in_checkmate()) status=game.turn()==='w'?'Checkmate! Black wins 🏆':'Checkmate! You win 🏆'; else if(game.in_draw()) status='Draw! 🤝'; else if(game.in_stalemate()) status='Stalemate! 🤝'; else if(game.in_check()) status=(game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️'; else status=(game.turn()==='w'?'White':'Black')+' to move'; document.getElementById('status').textContent=status; document.getElementById('moveList').textContent=game.history().length?game.history().join(' '):'Game start'; updateClocks(); }
+function clickSquare(sq){ if(gameOver||thinking)return; if(mode==='computer' && game.turn()==='b')return; let move=legalMoves.find(m=>m.to===sq); if(selected && move){ doMove(selected,sq); return; } let piece=game.get(sq); if(piece && piece.color===game.turn()){ selected=sq; legalMoves=game.moves({square:sq,verbose:true}); render(); return; } selected=null; legalMoves=[]; render(); }
+function doMove(from,to){ let piece=game.get(from); let promotion=(piece && piece.type==='p' && (to[1]==='8'||to[1]==='1'))?'q':undefined; let m=game.move({from,to,promotion}); if(!m){selected=null;legalMoves=[];render();return;} lastMove=m; selected=null; legalMoves=[]; if(game.in_checkmate()||game.in_draw()||game.in_stalemate()){ gameOver=true; clearInterval(timer); setTimeout(()=>{ if(game.in_checkmate()) alert(game.turn()==='w'?'Checkmate! Black wins!':'Checkmate! You win!'); else alert('Draw!'); },300); } render(); if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink(); }
+function stockfishMove(best){ thinking=false; let from=best.substring(0,2), to=best.substring(2,4); doMove(from,to); }
+function stockfishThink(){ thinking=true; document.getElementById('status').textContent='Computer thinking...'; if(!engine||!engineReady){ setTimeout(()=>{ let moves=game.moves({verbose:true}); if(moves.length){ let pick=moves[Math.floor(Math.random()*moves.length)]; thinking=false; doMove(pick.from,pick.to); } },800); return; } engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth '+levelSettings[stockfishLevel].depth); }
+function getHint(){ if(gameOver)return; if(engine&&engineReady){ let temp=engine.onmessage; engine.onmessage=function(event){ let line=typeof event==='string'?event:event.data; if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; alert('💡 Best move: '+best); engine.onmessage=temp; } }; engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 12'); } }
+function analyzePosition(){ if(engine&&engineReady){ engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 14'); } }
+function newGame(){ game=new Chess(); selected=null; legalMoves=[]; lastMove=null; whiteTime=selectedMinutes*60; blackTime=selectedMinutes*60; gameOver=false; thinking=false; render(); startTimer(); }
 newGame();
 </script>
 </body>
