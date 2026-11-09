@@ -1,15 +1,13 @@
 
-// === ZED GAMBIT - HIGH QUALITY PIECES FIX ===
+// === ZED GAMBIT - REAL PIECES - YOUR 12 LINKS ===
 
-const PIECE_MAP = {
-  // White - top in your screenshot
+const REAL = {
   'wK': 'https://lichess1.org/assets/piece/cburnett/wK.svg',
   'wQ': 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
   'wR': 'https://lichess1.org/assets/piece/cburnett/wR.svg',
   'wB': 'https://lichess1.org/assets/piece/cburnett/wB.svg',
   'wN': 'https://lichess1.org/assets/piece/cburnett/wN.svg',
   'wP': 'https://lichess1.org/assets/piece/cburnett/wP.svg',
-  // Black - bottom in your screenshot
   'bK': 'https://lichess1.org/assets/piece/cburnett/bK.svg',
   'bQ': 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
   'bR': 'https://lichess1.org/assets/piece/cburnett/bR.svg',
@@ -18,32 +16,43 @@ const PIECE_MAP = {
   'bP': 'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
 
-function fixPieces(){
-  // Find all piece images on board
-  document.querySelectorAll('img').forEach(img => {
-    const src = img.src || '';
-    // If it's a chess piece image, force high quality + big size
-    if(src.includes('/pieces/') || src.includes('piece') || img.alt?.length===2){
-      // Try to detect piece from alt or data
-      const key = img.alt || img.dataset.piece;
-      if(PIECE_MAP[key]){
-        img.src = PIECE_MAP[key];
-      }
-      // Make it BIG - fill 92% of square, not 50%
-      img.style.width = '92%';
-      img.style.height = '92%';
-      img.style.objectFit = 'contain';
-      img.style.filter = 'drop-shadow(0 2px 2px rgba(0,0,0,0.4))';
-      img.style.display = 'block';
-      img.style.margin = 'auto';
-    }
+// Toy -> Real mapping
+const TOY = {
+  '♔':'wK', '♕':'wQ', '♖':'wR', '♗':'wB', '♘':'wN', '♙':'wP',
+  '♚':'bK', '♛':'bQ', '♜':'bR', '♝':'bB', '♞':'bN', '♟':'bP',
+  'K':'wK', 'Q':'wQ', 'R':'wR', 'B':'wB', 'N':'wN', 'P':'wP',
+  'k':'bK', 'q':'bQ', 'r':'bR', 'b':'bB', 'n':'bN', 'p':'bP',
+};
+
+function fixRealPieces(){
+  document.querySelectorAll('div, span, td, button').forEach(el => {
+    if(el.children.length > 0) return;
+    const t = el.textContent.trim();
+    const key = TOY[t];
+    if(!key) return;
+
+    // Don't re-replace if already an image
+    if(el.dataset.zgReal) return;
+    el.dataset.zgReal = 'yes';
+    el.textContent = '';
+
+    const img = document.createElement('img');
+    img.src = REAL[key];
+    img.alt = key;
+    img.style.cssText = 'width:100%;height:100%;display:block;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.45));pointer-events:none;';
+    el.style.cssText += 'display:flex;align-items:center;justify-content:center;padding:2px;';
+    el.appendChild(img);
   });
 
-  // Also fix div-based pieces (if your board uses divs not img)
-  document.querySelectorAll('[class*="piece"]').forEach(el => {
-    el.style.backgroundSize = '92% 92%';
-    el.style.backgroundRepeat = 'no-repeat';
-    el.style.backgroundPosition = 'center';
+  // If your board already uses <img> with toy / local pieces, swap src
+  document.querySelectorAll('img').forEach(img => {
+    const alt = img.alt || '';
+    if(TOY[alt] && REAL[TOY[alt]] && img.src !== REAL[TOY[alt]]){
+      img.src = REAL[TOY[alt]];
+      img.style.width = '100%';
+      img.style.height = '100%';
+      img.style.objectFit = 'contain';
+    }
   });
 }
 
@@ -54,15 +63,13 @@ function addControls(){
   const c = document.createElement('div');
   c.id = 'zg-game-controls';
   c.style.cssText = 'display:flex;gap:8px;margin:12px 0;';
-  c.innerHTML = `
-    <button style="flex:1;padding:12px;background:#3b82f6;color:#fff;border:0;border-radius:8px;font-weight:700">🤝 Offer Draw</button>
-    <button style="flex:1;padding:12px;background:#ef4444;color:#fff;border:0;border-radius:8px;font-weight:700">🏳️ Resign</button>
-  `;
+  c.innerHTML = `<button style="flex:1;padding:12px;background:#3b82f6;color:#fff;border:0;border-radius:8px;font-weight:700">🤝 Offer Draw</button><button style="flex:1;padding:12px;background:#ef4444;color:#fff;border:0;border-radius:8px;font-weight:700">🏳️ Resign</button><button style="flex:1;padding:12px;background:#1e293b;color:#fff;border:0;border-radius:8px;font-weight:700">📖 Rules</button>`;
   btn.after(c);
   c.children[0].onclick = ()=> alert('Draw offered');
   c.children[1].onclick = ()=> { if(confirm('Resign?')) location.reload(); };
+  c.children[2].onclick = ()=> alert('Check / Checkmate / Stalemate / Castling / En Passant / Promotion / 50-move / Repetition all apply');
 }
 
-setInterval(()=>{ fixPieces(); addControls(); }, 500);
+setInterval(()=>{ fixRealPieces(); addControls(); }, 500);
 
 
