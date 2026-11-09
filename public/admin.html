@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zed Gambit Admin</title>
+<style>
+body{font-family:system-ui;background:#0f172a;color:#fff;margin:0;padding:16px}
+.card{background:#1e293b;padding:16px;border-radius:16px;margin-bottom:12px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:#fff;color:#000;padding:14px;border-radius:12px}
+.stat b{font-size:22px}
+.dots{display:flex;justify-content:center;gap:12px;margin:20px 0}
+.dot{width:16px;height:16px;border-radius:50%;border:2px solid #94a3b8}
+.dot.on{background:#fff;border-color:#fff}
+.keypad{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px}
+.keypad button{height:56px;border-radius:12px;border:0;font-size:20px;font-weight:bold;background:#334155;color:#fff}
+.login{width:100%;padding:14px;border:0;border-radius:12px;background:#fff;color:#000;font-weight:bold;margin-top:12px}
+input{width:100%;padding:12px;border-radius:10px;border:0;margin-top:8px;box-sizing:border-box}
+.small{color:#94a3b8;font-size:13px;text-align:center}
+.hidden{display:none}
+.red{color:#f87171;text-align:center;font-size:13px}
+.btn{background:#fff;color:#000;padding:10px 14px;border-radius:10px;border:0;font-weight:bold}
+</style>
+</head>
+<body>
+<div id="loginBox" class="card">
+  <h2 style="text-align:center;margin:0">Admin Dashboard</h2>
+  <p class="small">Owner access only</p>
+  <div class="dots"><div class="dot" id="d0"></div><div class="dot" id="d1"></div><div class="dot" id="d2"></div><div class="dot" id="d3"></div></div>
+  <p id="err" class="red"></p>
+  <div class="keypad">
+    <button onclick="press('1')">1</button><button onclick="press('2')">2</button><button onclick="press('3')">3</button>
+    <button onclick="press('4')">4</button><button onclick="press('5')">5</button><button onclick="press('6')">6</button>
+    <button onclick="press('7')">7</button><button onclick="press('8')">8</button><button onclick="press('9')">9</button>
+    <button onclick="clearPin()">Clear</button><button onclick="press('0')">0</button><button onclick="del()">⌫</button>
+  </div>
+  <button class="login" onclick="doLogin()">Login as Admin</button>
+  <p class="small"><a href="/" style="color:#94a3b8">← Back to Home</a></p>
+</div>
+
+<div id="dash" class="hidden">
+  <h2>Admin Dashboard</h2>
+  <p class="small" style="text-align:left">Logged in as Owner • Zed Gambit</p>
+  <div class="grid">
+    <div class="stat"><div>Total Players</div><b id="tPlayers">0</b></div>
+    <div class="stat"><div>Total Arenas</div><b id="tArenas">0</b></div>
+    <div class="stat"><div>Total Money In</div><b id="tMoney">K0</b></div>
+    <div class="stat"><div>Total Payouts</div><b id="tPayout">K0</b></div>
+  </div>
+  <div class="card">
+    <b>Security</b>
+    <button class="btn" style="float:right" onclick="document.getElementById('changeBox').classList.toggle('hidden')">Change PIN</button>
+    <div id="changeBox" class="hidden">
+      <input id="newPin" type="password" maxlength="4" placeholder="New 4-digit PIN" inputmode="numeric">
+      <input id="confirmPin" type="password" maxlength="4" placeholder="Confirm new PIN" inputmode="numeric">
+      <button class="login" onclick="changePin()">Save New PIN</button>
+    </div>
+  </div>
+  <div class="card"><b>Recent Players</b><div id="playerList" style="margin-top:10px;font-size:14px"></div></div>
+  <button class="btn" style="width:100%;background:#ef4444;color:#fff" onclick="logout()">Logout</button>
+</div>
+
+<script>
+let pin = "";
+let attempts = 0;
+function renderDots(){
+  for(let i=0;i<4;i++) document.getElementById("d"+i).className = "dot" + (pin.length > i ? " on" : "");
+}
+function press(n){ if(pin.length<4){ pin+=n; renderDots(); document.getElementById("err").textContent=""; } }
+function del(){ pin=pin.slice(0,-1); renderDots(); }
+function clearPin(){ pin=""; renderDots(); }
+function getPin(){ return localStorage.getItem("admin_pin") || "2026"; }
+function doLogin(){
+  let lock = Number(localStorage.getItem("admin_lock_until")||0);
+  if(Date.now()<lock){ document.getElementById("err").textContent="Locked. Try again in "+Math.ceil((lock-Date.now())/60000)+" min."; return; }
+  if(pin.length!==4){ document.getElementById("err").textContent="Enter 4 digits"; return; }
+  if(pin===getPin()){
+    document.getElementById("loginBox").classList.add("hidden");
+    document.getElementById("dash").classList.remove("hidden");
+    loadStats();
+  } else {
+    attempts++; pin=""; renderDots();
+    if(attempts>=3){
+      let t = Date.now()+5*60*1000; localStorage.setItem("admin_lock_until", t.toString());
+      document.getElementById("err").textContent="Too many tries. Locked 5 min.";
+    } else {
+      document.getElementById("err").textContent="Wrong PIN. "+(3-attempts)+" tries left.";
+    }
+  }
+}
+function loadStats(){
+  let players = JSON.parse(localStorage.getItem("players")||"[]");
+  let arenas = JSON.parse(localStorage.getItem("arenas")||"[]");
+  document.getElementById("tPlayers").textContent = players.length;
+  document.getElementById("tArenas").textContent = arenas.length;
+  let money = 0; players.forEach(p=> money += Number(p.balance||0)+Number(p.totalDeposited||0));
+  document.getElementById("tMoney").textContent = "K"+money;
+  document.getElementById("tPayout").textContent = "K"+arenas.reduce((s,a)=>s+Number(a.totalPayout||0),0);
+  let list = document.getElementById("playerList");
+  if(players.length===0) list.innerHTML="No players yet.";
+  else list.innerHTML = players.slice(-10).reverse().map(p=>`<div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #334155"><span>${p.username||p.name||"Player"}</span><span>Rating ${p.rating||1000} • K${p.balance||0}</span></div>`).join("");
+}
+function changePin(){
+  let n=document.getElementById("newPin").value, c=document.getElementById("confirmPin").value;
+  if(n.length!==4||c.length!==4){ alert("PIN must be 4 digits"); return; }
+  if(n!==c){ alert("PINs do not match"); return; }
+  localStorage.setItem("admin_pin", n); alert("PIN changed successfully");
+  document.getElementById("changeBox").classList.add("hidden");
+}
+function logout(){ location.reload(); }
+</script>
+</body>
+</html>
