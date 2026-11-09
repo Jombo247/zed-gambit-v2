@@ -107,6 +107,29 @@ function fixProfile() {
 }
 setInterval(fixProfile, 1000);
 fixProfile();
+// Hide Themba card when nobody is logged in
+function fixLoggedOut() {
+  const text = document.body.innerText || "";
+  const isLoggedIn = text.includes('Logged in as');
+
+  // Find the Themba card - it's the dark card with "Min Bet K5"
+  document.querySelectorAll('div').forEach(div => {
+    if (div.textContent.includes('Themba Ndhlovu') && div.textContent.includes('Min Bet K5')) {
+      // Only hide if this is the outer card, not tiny inner text
+      if (div.textContent.length < 500) {
+        div.style.display = isLoggedIn ? '' : 'none';
+      }
+    }
+    // Also hide Play Now / Play vs Computer when logged out
+    if (!isLoggedIn && (div.textContent.trim() === 'Play Now — Auto Stake K5')) {
+      div.style.display = 'none';
+    }
+  });
+}
+setInterval(fixLoggedOut, 1000);
+fixLoggedOut();
+
+
 
 
 
