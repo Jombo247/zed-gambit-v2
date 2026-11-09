@@ -3,7 +3,7 @@ import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
 import ArenaShell from "./ArenaShell"
-import "./index.css"
+
 
 const inArena = localStorage.getItem("inArena") === "true"
 
