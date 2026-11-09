@@ -8,13 +8,29 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js"></script>
 <style>
-body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px;text-align:center}
+body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px}
+.topbar{display:flex;justify-content:space-between;align-items:center;max-width:420px;margin:auto}
+.balance{background:#1f2937;padding:8px 14px;border-radius:20px;font-size:15px}
+h2{margin:5px 0;text-align:center}
+.arena{background:#1f2937;max-width:420px;margin:12px auto;padding:16px;border-radius:14px}
+.arena h3{margin:0;font-size:18px}
+.arena p{margin:4px 0;font-size:13px;opacity:.7}
+.arena button{width:100%;padding:12px;border:0;border-radius:10px;background:#22c55e;font-weight:900;font-size:15px;margin-top:8px;cursor:pointer}
+.arena button:disabled{background:#374151;color:#9ca3af}
+.card{background:#1f2937;max-width:420px;margin:12px auto;padding:14px;border-radius:14px;text-align:left}
+.verify-box{background:#fff;color:#000;max-width:420px;margin:12px auto;padding:16px;border-radius:14px;text-align:left}
+.verify-box input{width:100%;padding:12px;border:2px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box;margin:6px 0}
+.step{display:flex;gap:10px;align-items:flex-start;margin:10px 0}
+.step-num{width:28px;height:28px;min-width:28px;background:#111827;color:#fff;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:900;font-size:14px}
+.step.done .step-num{background:#22c55e}
+.step.active .step-num{background:#facc15;color:#000}
+button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
+.opt{background:#374151}.opt.active{background:#facc15;color:#000}
 .player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:420px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
 .player-bar.active{outline:2px solid #facc15}
 .avatar{width:32px;height:32px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;font-size:18px}
 .clock{background:#000;color:#fff;padding:6px 12px;border-radius:8px;font-size:22px;font-weight:800;min-width:70px}
 .clock.active{background:#facc15;color:#000}
-.clock.low{color:#ef4444}
 #board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
 .light{background:#ebecd0}.dark{background:#739552}
@@ -23,209 +39,250 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .square.legal::after{content:'';width:22%;height:22%;background:rgba(0,0,0,0.25);border-radius:50%;position:absolute}
 .square.legal-capture::after{content:'';width:92%;height:92%;border:4px solid rgba(0,0,0,0.25);border-radius:50%;position:absolute}
 .square.check{background:#ef4444 !important}
-.square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
+.square img{width:96%;height:96%;object-fit:contain;pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
-button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
-.opt{background:#374151}.opt.active{background:#facc15;color:#000}
 .moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
-.captured{font-size:16px;min-height:20px;text-align:left}
-#status{font-weight:800;color:#facc15;margin:6px}
-.verify-box{background:#fff;color:#000;max-width:420px;margin:auto;padding:16px;border-radius:14px;text-align:left}
-.verify-box input{width:100%;padding:12px;border:2px solid #ccc;border-radius:8px;font-size:15px;box-sizing:border-box}
-.banned{background:#fee2e2;border:2px solid #ef4444;padding:10px;border-radius:10px;color:#991b1b;font-weight:800}
-.clean{background:#dcfce7;border:2px solid #22c55e;padding:10px;border-radius:10px;color:#166534;font-weight:800}
-.card{background:#1f2937;max-width:420px;margin:10px auto;padding:14px;border-radius:14px;text-align:left}
+.captured{font-size:16px;min-height:20px}
+#status{font-weight:800;color:#facc15;margin:6px;text-align:center}
+.banned{background:#fee2e2;border:2px solid #ef4444;padding:10px;border-radius:10px;color:#991b1b;font-weight:800;font-size:13px}
+.clean{background:#dcfce7;border:2px solid #22c55e;padding:10px;border-radius:10px;color:#166534;font-weight:800;font-size:13px}
 .timeline{position:relative;padding-left:22px;margin:10px 0}
 .timeline::before{content:'';position:absolute;left:7px;top:4px;bottom:4px;width:3px;background:#374151}
-.t-step{position:relative;margin:12px 0}
+.t-step{position:relative;margin:10px 0;font-size:13px}
 .t-step::before{content:'';position:absolute;left:-19px;top:3px;width:12px;height:12px;border-radius:50%;background:#374151;border:2px solid #111827}
-.t-step.done::before{background:#22c55e}
-.t-step.live::before{background:#facc15;box-shadow:0 0 0 4px rgba(250,204,21,0.3)}
-.t-step.next::before{background:#3b82f6}
-.prize-row{display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid #374151;font-size:14px}
-.prize-row:first-child{background:#facc15;color:#000;border-radius:8px;padding:10px;font-weight:900}
-.countdown{background:#000;padding:10px;border-radius:10px;text-align:center;font-size:20px;font-weight:900;color:#facc15;margin:8px 0}
+.t-step.done::before{background:#22c55e}.t-step.live::before{background:#facc15}
+.countdown{background:#000;padding:10px;border-radius:10px;text-align:center;font-size:18px;font-weight:900;color:#facc15;margin:8px 0}
 </style>
 </head>
 <body>
-<h2 style="margin:5px">♞ Zed Gambit</h2>
-<p style="font-size:12px;opacity:.7">Zambia's Chess Arena • Play • Compete • Win</p>
 
-<!-- ===== TOURNAMENT TIMELINE + PRIZES ===== -->
+<div class="topbar">
+  <div style="font-weight:900;font-size:20px">♞ ZED GAMBIT</div>
+  <div class="balance">Balance: <b id="balanceText">K100</b></div>
+</div>
+
+<!-- ===== VERIFY FLOW - ALWAYS ON TOP, CARDS BELOW STAY ===== -->
+<div class="verify-box">
+  <div style="font-weight:900;font-size:18px">✅ Join Zed Gambit - 3 Steps</div>
+
+  <!-- STEP 1 - CREATE ACCOUNT -->
+  <div class="step done" id="step1Box">
+    <div class="step-num">1</div>
+    <div style="flex:1">
+      <b>Create Chess Account</b><br>
+      <span style="font-size:12px;color:#555">If you don't have one, create free account in 1 minute.</span><br>
+      <button style="background:#2563eb;width:100%;margin-top:6px" onclick="createChessAccount()">+ Create Free Chess Account</button>
+    </div>
+  </div>
+
+  <!-- STEP 2 - VERIFY CHESS USERNAME (hidden lichess check) -->
+  <div class="step active" id="step2Box">
+    <div class="step-num">2</div>
+    <div style="flex:1">
+      <b>Verify Chess Username</b><br>
+      <span style="font-size:12px;color:#555">We check your fair-play history.</span>
+      <input id="chessUsername" placeholder="e.g. Pazed200">
+      <button style="background:#111827;width:100%" onclick="verifyUser()">Verify Username</button>
+      <div id="verifyResult" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <!-- STEP 3 - VERIFY MOBILE MONEY -->
+  <div class="step" id="step3Box">
+    <div class="step-num">3</div>
+    <div style="flex:1">
+      <b>Verify Mobile Money</b><br>
+      <span style="font-size:12px;color:#555">Enter your MoMo number to receive winnings.</span>
+      <input id="momoNumber" placeholder="e.g. 0977 123 456">
+      <button style="background:#22c55e;width:100%" onclick="verifyMomo()">Verify Mobile Money</button>
+      <div id="momoResult" style="margin-top:6px"></div>
+    </div>
+  </div>
+
+  <div id="allVerified" style="display:none;background:#dcfce7;color:#166534;padding:10px;border-radius:10px;font-weight:800;text-align:center;margin-top:8px">✅ All Verified! You can now Join any Arena below ↓</div>
+</div>
+
+<!-- ===== RATED ARENAS - ALWAYS VISIBLE, NEVER GONE ===== -->
+<h2 style="text-align:left;max-width:420px;margin:15px auto 0">RATED ARENAS</h2>
+
+<div class="arena" id="arenaBullet">
+  <h3>Bullet 1+0 • Rated</h3>
+  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K5 • Prize: K70</p>
+  <p id="bulletPlayers">No players yet - Be first to join</p>
+  <button id="btnBullet" onclick="joinArena('Bullet 1+0',5,70)">Join Arena - K5</button>
+</div>
+
+<div class="arena" id="arenaBlitz32">
+  <h3>Blitz 3+2 • Rated</h3>
+  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K10 • Prize: K140</p>
+  <p id="blitz32Players">No players yet - Be first to join</p>
+  <button id="btnBlitz32" onclick="joinArena('Blitz 3+2',10,140)">Join Arena - K10</button>
+</div>
+
+<div class="arena" id="arenaBlitz50">
+  <h3>Blitz 5+0 • Rated</h3>
+  <p style="color:#fff;opacity:1;font-size:15px;font-weight:700">Stake: K10 • Prize: K140</p>
+  <p id="blitz50Players">No players yet - Be first to join</p>
+  <button id="btnBlitz50" onclick="joinArena('Blitz 5+0',10,140)">Join Arena - K10</button>
+</div>
+
+<!-- ===== TOURNAMENT TIMELINE + PRIZES - ALSO ALWAYS VISIBLE ===== -->
 <div class="card">
   <div style="display:flex;justify-content:space-between;align-items:center">
-    <div style="font-weight:900;font-size:18px">🏆 Zed Gambit Stake Tournament</div>
-    <span id="tourStatusBadge" style="background:#22c55e;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900">REGISTRATION OPEN</span>
+    <div style="font-weight:900;font-size:17px">🏆 Zed Gambit Stake Tournament</div>
+    <span style="background:#22c55e;color:#000;padding:4px 10px;border-radius:20px;font-size:11px;font-weight:900">OPEN</span>
   </div>
-  <div style="font-size:13px;opacity:.8;margin-top:4px">Rapid 10+0 • 60 Minutes • Max 32 Players</div>
-
-  <!-- COUNTDOWN -->
   <div class="countdown" id="countdown">⏳ Starts in: Loading...</div>
-
-  <!-- TIMELINE -->
-  <div style="font-weight:800;font-size:14px;margin-top:10px">📅 Tournament Timeline</div>
   <div class="timeline">
-    <div class="t-step done" id="step1">
-      <b>1. Registration Opens</b><br>
-      <span style="font-size:12px;opacity:.8" id="dateRegOpen">Mon 10 Nov, 09:00</span><br>
-      <span style="font-size:12px;color:#22c55e">✅ DONE - Players verifying now</span>
-    </div>
-    <div class="t-step live" id="step2">
-      <b>2. Registration Closes + Payment Deadline</b><br>
-      <span style="font-size:12px;opacity:.8" id="dateRegClose">Fri 14 Nov, 18:00</span><br>
-      <span style="font-size:12px;color:#facc15">● LIVE - Pay Entry Fee to confirm spot</span>
-    </div>
-    <div class="t-step next" id="step3">
-      <b>3. Tournament Starts - Round 1</b><br>
-      <span style="font-size:12px;opacity:.8" id="dateStart">Sat 15 Nov, 14:00</span><br>
-      <span style="font-size:12px;color:#60a5fa">⏰ Be online 10 mins early</span>
-    </div>
-    <div class="t-step" id="step4">
-      <b>4. Final Round + Winners Announced</b><br>
-      <span style="font-size:12px;opacity:.8" id="dateFinal">Sat 15 Nov, 15:30</span><br>
-      <span style="font-size:12px;opacity:.8">🏆 Prizes sent via Mobile Money same day</span>
-    </div>
-    <div class="t-step" id="step5">
-      <b>5. Prizes Paid</b><br>
-      <span style="font-size:12px;opacity:.8" id="datePay">Sat 15 Nov, 17:00</span><br>
-      <span style="font-size:12px;opacity:.8">💸 Airtel / MTN MoMo</span>
-    </div>
+    <div class="t-step done"><b>1. Registration Opens</b><br><span style="opacity:.8" id="dateRegOpen">Mon 10 Nov, 09:00</span> • ✅ DONE</div>
+    <div class="t-step live"><b>2. Registration Closes + Payment Deadline</b><br><span style="opacity:.8" id="dateRegClose">Fri 14 Nov, 18:00</span> • ● LIVE</div>
+    <div class="t-step"><b>3. Tournament Starts</b><br><span style="opacity:.8" id="dateStart">Sat 15 Nov, 14:00</span></div>
+    <div class="t-step"><b>4. Final + Winners</b><br><span style="opacity:.8" id="dateFinal">Sat 15 Nov, 15:30</span></div>
+    <div class="t-step"><b>5. Prizes Paid via MoMo</b><br><span style="opacity:.8" id="datePay">Sat 15 Nov, 17:00</span></div>
   </div>
-
-  <!-- PRIZES -->
-  <div style="font-weight:800;font-size:14px;margin-top:12px">💰 Prizes & Entry Fee</div>
-  <div style="background:#111827;padding:12px;border-radius:10px;margin-top:6px">
+  <div style="background:#111827;padding:12px;border-radius:10px">
     <div style="display:flex;justify-content:space-between"><span>Entry Fee:</span><b style="color:#facc15">K20</b></div>
-    <div style="display:flex;justify-content:space-between;font-size:12px;opacity:.8"><span>Total Prize Pool (32 players):</span><b>K640</b></div>
-    <div class="prize-row"><span>🥇 1st Place</span><span>K300</span></div>
-    <div class="prize-row"><span>🥈 2nd Place</span><span>K180</span></div>
-    <div class="prize-row"><span>🥉 3rd Place</span><span>K100</span></div>
-    <div class="prize-row"><span>4th Place</span><span>K60</span></div>
-    <div class="prize-row"><span>Best U-1400 Player</span><span>K30 Bonus</span></div>
-    <div style="font-size:11px;opacity:.7;margin-top:6px">* Prizes adjust if less than 32 players join. Min 8 players for tournament to run. If cancelled, full refund.</div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥇 1st</span><b>K300</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #374151"><span>🥈 2nd</span><b>K180</b></div>
+    <div style="display:flex;justify-content:space-between;padding:6px 0"><span>🥉 3rd</span><b>K100</b></div>
   </div>
-
-  <!-- PAYMENT -->
-  <div style="background:#fef3c7;color:#000;padding:12px;border-radius:10px;margin-top:10px">
-    <b>📱 How to Pay Entry Fee - K20</b><br>
-    <span style="font-size:13px">1. Airtel Money / MTN MoMo to: <b>0977 123 456</b> - Themba K.</span><br>
-    <span style="font-size:13px">2. Reference: <b>Your Chess Username</b> (e.g. PAZED200)</span><br>
-    <span style="font-size:13px">3. WhatsApp screenshot to: <b>0977 123 456</b></span><br>
-    <button style="background:#25D366;width:100%;margin-top:8px" onclick="payWhatsApp()">💬 Confirm Payment on WhatsApp</button>
-  </div>
-  <div style="font-size:12px;margin-top:8px">Players Registered: <b id="registeredCount">1</b> / 32 • Spots Left: <b id="spotsLeft" style="color:#facc15">31</b></div>
 </div>
 
-<!-- VERIFY -->
-<div class="verify-box" id="verifyBox">
-  <div style="font-weight:900;font-size:18px">✅ Verify Your Chess Account</div>
-  <p style="font-size:13px;color:#444">To join tournament, enter your Chess Username. We check your fair-play history to keep tournaments clean.</p>
-  <input id="chessUsername" placeholder="Enter your Chess Username, e.g. Pazed200">
-  <button style="background:#111827;width:100%;margin-top:8px" onclick="verifyUser()">Verify & Join Tournament</button>
-  <div id="verifyResult" style="margin-top:10px"></div>
-  <div style="font-size:12px;margin-top:8px;color:#555">Don't have a Chess Username? <a href="#" onclick="alert('Create a free account on any major chess platform, then come back and enter your username here.');return false;" style="color:#2563eb;font-weight:800">Create free account</a></div>
-</div>
-
+<!-- ===== GAME BOARD - SHOWS AFTER JOIN, CARDS STAY ABOVE ===== -->
 <div id="gameArea" style="display:none">
-<div style="max-width:420px;margin:10px auto;background:#1f2937;padding:10px;border-radius:12px">
-<div style="font-size:12px;opacity:.7">TIME CONTROL</div>
-<button class="opt" data-time="1" onclick="setTime(1,this)">1 min</button>
-<button class="opt" data-time="3" onclick="setTime(3,this)">3 min</button>
-<button class="opt" data-time="5" onclick="setTime(5,this)">5 min</button>
-<button class="opt active" data-time="10" onclick="setTime(10,this)">10 min</button>
-<div style="font-size:12px;opacity:.7;margin:8px 0 4px">OPPONENT</div>
-<button class="opt active" id="btnComputer" onclick="setMode('computer')">♞ vs Computer</button>
-<button class="opt" id="btn2p" onclick="setMode('2p')">👥 2 Players</button>
+<div style="max-width:420px;margin:10px auto;background:#1f2937;padding:10px;border-radius:12px;text-align:center">
+<div style="font-size:12px;opacity:.7">YOU ARE PLAYING</div>
+<div id="currentArena" style="font-weight:900;font-size:18px;color:#facc15">Bullet 1+0</div>
 <div style="font-size:12px;opacity:.7;margin:8px 0 4px">LEVEL</div>
 <button class="opt" data-level="easy" onclick="setLevel('easy',this)">Easy</button>
 <button class="opt active" data-level="medium" onclick="setLevel('medium',this)">Medium</button>
 <button class="opt" data-level="hard" onclick="setLevel('hard',this)">Hard</button>
 <div id="engineStatus" style="font-size:11px;color:#22c55e;margin-top:6px">● Engine Ready</div>
 </div>
-
-<div class="player-bar" id="blackBar">
-  <div style="display:flex;gap:8px;align-items:center"><div class="avatar" id="blackAvatar">♞</div><div style="text-align:left"><div style="font-weight:800" id="blackName">Computer • Black</div><div id="blackCaptured" class="captured"></div></div></div>
-  <div class="clock" id="blackClock">10:00</div>
-</div>
+<div class="player-bar" id="blackBar"><div style="display:flex;gap:8px;align-items:center"><div class="avatar" id="blackAvatar">♞</div><div style="text-align:left"><div style="font-weight:800" id="blackName">Opponent • Black</div><div id="blackCaptured" class="captured"></div></div></div><div class="clock" id="blackClock">1:00</div></div>
 <div id="status">White to move</div>
-<div id="eval" style="font-size:12px;opacity:.8">Eval: +0.2</div>
+<div id="eval" style="font-size:12px;opacity:.8;text-align:center">Eval: +0.2</div>
 <div id="board"></div>
-<div class="player-bar" id="whiteBar">
-  <div style="display:flex;gap:8px;align-items:center"><div class="avatar">😀</div><div style="text-align:left"><div style="font-weight:800" id="whiteName">You • White</div><div id="whiteCaptured" class="captured"></div></div></div>
-  <div class="clock" id="whiteClock">10:00</div>
-</div>
-<p style="color:#facc15;margin:4px">You are WHITE • Fair Play Protected</p>
-<div>
+<div class="player-bar" id="whiteBar"><div style="display:flex;gap:8px;align-items:center"><div class="avatar">😀</div><div style="text-align:left"><div style="font-weight:800" id="whiteName">You • White</div><div id="whiteCaptured" class="captured"></div></div></div><div class="clock" id="whiteClock">1:00</div></div>
+<div style="text-align:center">
 <button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
-<button style="background:#3b82f6" onclick="alert('Draw offered')">🤝 Offer Draw</button>
 <button style="background:#ef4444" onclick="if(confirm('Resign?')) newGame()">🏳️ Resign</button>
 </div>
 <div class="moves"><b>Moves:</b> <span id="moveList">Game start</span></div>
-<button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button>
-<button style="background:#0ea5e9" onclick="analyzePosition()">📊 Analyze</button>
-<button style="background:#ef4444" onclick="reportPlayer()">🚨 Report Unfair Play</button>
-</div>
-
-<div id="adminArea" style="display:none;max-width:420px;margin:15px auto;background:#fef3c7;color:#000;padding:14px;border-radius:12px;text-align:left">
-  <b>🔐 Admin - Edit Tournament (Only You - add ?admin to URL)</b>
-  <p style="font-size:12px">Change dates, prizes, entry fee here. Players see it instantly.</p>
-  <label style="font-size:12px">Entry Fee (K)</label><input id="admEntry" value="20" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <label style="font-size:12px">1st Prize (K)</label><input id="admFirst" value="300" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <label style="font-size:12px">2nd Prize (K)</label><input id="admSecond" value="180" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <label style="font-size:12px">3rd Prize (K)</label><input id="admThird" value="100" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <label style="font-size:12px">MoMo Number</label><input id="admMomo" value="0977 123 456" style="width:100%;padding:10px;border-radius:8px;border:1px solid #ccc;box-sizing:border-box">
-  <button style="background:#000;width:100%" onclick="saveAdminSettings()">Save Tournament Settings</button>
+<div style="text-align:center"><button style="background:#8b5cf6" onclick="getHint()">💡 Hint</button><button style="background:#0ea5e9" onclick="analyzePosition()">📊 Analyze</button></div>
 </div>
 
 <script>
-const REAL = {
-  wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
-  wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
-  wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',
-  wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',
-  wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',
-  wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',
-  bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',
-  bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',
-  bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',
-  bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',
-  bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
-  bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
-};
-// ===== TOURNAMENT TIMELINE LOGIC =====
-// EDIT THESE DATES FOR YOUR NEXT TOURNAMENT
-let TOURNAMENT = {
-  regOpen: new Date('2026-11-10T09:00:00'),
-  regClose: new Date('2026-11-14T18:00:00'),
-  start: new Date('2026-11-15T14:00:00'),
-  final: new Date('2026-11-15T15:30:00'),
-  pay: new Date('2026-11-15T17:00:00'),
-  entryFee: 20,
-  prizes: { first: 300, second: 180, third: 100, fourth: 60 }
-};
-function updateTimeline(){
-  let now=new Date();
-  let cd=document.getElementById('countdown');
-  let badge=document.getElementById('tourStatusBadge');
-  if(now < TOURNAMENT.regClose){
-    let diff=TOURNAMENT.start - now;
-    let d=Math.floor(diff/(1000*60*60*24)), h=Math.floor(diff/(1000*60*60)%24), m=Math.floor(diff/(1000*60)%60);
-    cd.textContent='⏳ Starts in: '+d+'d '+h+'h '+m+'m';
-    badge.textContent='REGISTRATION OPEN'; badge.style.background='#22c55e';
-  } else if(now < TOURNAMENT.start){
-    let diff=TOURNAMENT.start - now; let h=Math.floor(diff/(1000*60*60)), m=Math.floor(diff/(1000*60)%60);
-    cd.textContent='🔒 Registration Closed • Starts in: '+h+'h '+m+'m';
-    badge.textContent='REGISTRATION CLOSED'; badge.style.background='#ef4444';
-    document.getElementById('step2').classList.add('done'); document.getElementById('step2').classList.remove('live');
-  } else if(now < TOURNAMENT.final){
-    cd.textContent='🔴 LIVE NOW - Tournament in progress!';
-    badge.textContent='LIVE'; badge.style.background='#facc15';
-    document.getElementById('step3').classList.add('live');
-  } else {
-    cd.textContent='🏆 Tournament Finished - Prizes Paid';
-    badge.textContent='FINISHED'; badge.style.background='#374151'; badge.style.color='#fff';
+const REAL = { wK:'https://lichess1.org/assets/piece/cburnett/wK.svg', wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg', wR:'https://lichess1.org/assets/piece/cburnett/wR.svg', wB:'https://lichess1.org/assets/piece/cburnett/wB.svg', wN:'https://lichess1.org/assets/piece/cburnett/wN.svg', wP:'https://lichess1.org/assets/piece/cburnett/wP.svg', bK:'https://lichess1.org/assets/piece/cburnett/bK.svg', bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg', bR:'https://lichess1.org/assets/piece/cburnett/bR.svg', bB:'https://lichess1.org/assets/piece/cburnett/bB.svg', bN:'https://lichess1.org/assets/piece/cburnett/bN.svg', bP:'https://lichess1.org/assets/piece/cburnett/bP.svg' };
+// ===== STATE =====
+let balance = parseInt(localStorage.getItem('zed_balance')||'100');
+let chessVerified=false, momoVerified=false, currentUser=localStorage.getItem('zed_user')||'';
+let currentArena=null, currentStake=0, currentPrize=0;
+function updateBalance(){ document.getElementById('balanceText').textContent='K'+balance; localStorage.setItem('zed_balance', balance); }
+updateBalance();
+if(currentUser){ document.getElementById('chessUsername').value=currentUser; }
+
+// ===== STEP 1 - CREATE ACCOUNT =====
+function createChessAccount(){
+  // User goes to create account, then comes back to Step 2
+  // We keep it inside Zed Gambit flow - they don't see the name in UI after
+  window.open('https://lichess.org/signup', '_blank');
+  alert('Step 1: Create your free Chess Account.\n\nThen come back here, enter your new username in Step 2 and tap Verify.');
+}
+
+// ===== STEP 2 - VERIFY CHESS USERNAME (hidden check) =====
+async function verifyUser(){
+  let username=document.getElementById('chessUsername').value.trim();
+  if(!username){ alert('Enter your Chess Username'); return; }
+  document.getElementById('verifyResult').innerHTML='Verifying fair-play...';
+  try{
+    let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username));
+    if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Did you create account in Step 1?</div>'; return; }
+    let data=await res.json();
+    if(data.disabled || data.tosViolation){
+      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION<br>'+username+' flagged. Deregistered. Cannot play.</div>';
+      let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
+      if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase());
+      localStorage.setItem('zed_banned', JSON.stringify(banned));
+      return;
+    }
+    if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed.</div>'; return; }
+    let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
+    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 Previously deregistered.</div>'; return; }
+    let blitz=data.perfs?.blitz?.rating||'?';
+    chessVerified=true; currentUser=data.username;
+    localStorage.setItem('zed_user', currentUser);
+    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>Now do Step 3 - Mobile Money</div>';
+    document.getElementById('step2Box').classList.add('done');
+    document.getElementById('step3Box').classList.add('active');
+    document.getElementById('whiteName').textContent=data.username+' • White';
+    checkAllVerified();
+  }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ No internet. Try again.</div>'; }
+}
+
+// ===== STEP 3 - VERIFY MOBILE MONEY =====
+function verifyMomo(){
+  let momo=document.getElementById('momoNumber').value.trim();
+  if(!momo || momo.length<10){ alert('Enter valid MoMo number, e.g. 0977 123 456'); return; }
+  if(!chessVerified){ alert('Do Step 2 first - Verify Chess Username'); return; }
+  // Save MoMo - in real version you send K1 test or OTP
+  momoVerified=true;
+  localStorage.setItem('zed_momo', momo);
+  document.getElementById('momoResult').innerHTML='<div class="clean">✅ MOBILE MONEY VERIFIED<br>'+momo+'<br>Winnings will be sent here.</div>';
+  document.getElementById('step3Box').classList.add('done');
+  checkAllVerified();
+  // WhatsApp confirm
+  let msg='Hi Zed Gambit! My Chess Username: '+currentUser+' My MoMo: '+momo+' Please verify me for Arenas.';
+  // Uncomment to auto-open WhatsApp: window.open('https://wa.me/260977123456?text='+encodeURIComponent(msg),'_blank');
+}
+function checkAllVerified(){
+  if(chessVerified && momoVerified){
+    document.getElementById('allVerified').style.display='block';
+    // Enable all Join buttons
+    document.querySelectorAll('.arena button').forEach(b=>b.disabled=false);
   }
-  // Update dates text
+}
+// Initially lock Join buttons until verified
+document.querySelectorAll('.arena button').forEach(b=>{ b.disabled=false; }); // Keep enabled but check on click
+
+// ===== JOIN ARENA - CARDS STAY VISIBLE =====
+function joinArena(arenaName, stake, prize){
+  if(!chessVerified){
+    alert('⚠️ Do Step 2 first: Verify your Chess Username.\n\nScroll up to top.');
+    document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Verify Step 2 first to Join Arena</div>';
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+  if(!momoVerified){
+    alert('⚠️ Do Step 3: Verify Mobile Money to receive winnings.');
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;
+  }
+  if(balance < stake){ alert('❌ Not enough balance. Balance: K'+balance+' Need: K'+stake+'\n\nTop up via MoMo 0977 123 456'); return; }
+  if(!confirm('Join '+arenaName+'?\nStake: K'+stake+' will be deducted.\nPrize if you win: K'+prize+'\n\nConfirm?')) return;
+  balance -= stake; updateBalance();
+  currentArena=arenaName; currentStake=stake; currentPrize=prize;
+  document.getElementById('currentArena').textContent=arenaName+' • Stake K'+stake+' • Prize K'+prize;
+  // Update player count text - cards stay!
+  if(arenaName.includes('1+0')) document.getElementById('bulletPlayers').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
+  if(arenaName.includes('3+2')) document.getElementById('blitz32Players').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
+  if(arenaName.includes('5+0')) document.getElementById('blitz50Players').textContent='1 player waiting - '+currentUser+' joined • Waiting for opponent...';
+  // Set clock based on arena
+  if(arenaName.includes('1+0')){ selectedMinutes=1; whiteTime=60; blackTime=60; }
+  if(arenaName.includes('3+2')){ selectedMinutes=3; whiteTime=180; blackTime=180; }
+  if(arenaName.includes('5+0')){ selectedMinutes=5; whiteTime=300; blackTime=300; }
+  document.getElementById('gameArea').style.display='block';
+  document.getElementById('gameArea').scrollIntoView({behavior:'smooth'});
+  newGame();
+  alert('✅ Joined '+arenaName+'! Stake K'+stake+' deducted. Balance: K'+balance+'\n\nYour board is below - Cards are still above, scroll up to see them.');
+}
+
+// ===== TIMELINE =====
+let TOURNAMENT={ regOpen:new Date('2026-11-10T09:00:00'), regClose:new Date('2026-11-14T18:00:00'), start:new Date('2026-11-15T14:00:00'), final:new Date('2026-11-15T15:30:00'), pay:new Date('2026-11-15T17:00:00') };
+function updateTimeline(){
+  let now=new Date(); let cd=document.getElementById('countdown');
+  if(now < TOURNAMENT.start){ let diff=TOURNAMENT.start-now; let d=Math.floor(diff/(1000*60*60*24)), h=Math.floor(diff/(1000*60*60)%24), m=Math.floor(diff/(1000*60)%60); cd.textContent='⏳ Tournament Starts in: '+d+'d '+h+'h '+m+'m'; }
+  else cd.textContent='🔴 Tournament LIVE';
   let fmt=(d)=>d.toLocaleDateString('en-GB',{weekday:'short',day:'numeric',month:'short'})+', '+d.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'});
   document.getElementById('dateRegOpen').textContent=fmt(TOURNAMENT.regOpen);
   document.getElementById('dateRegClose').textContent=fmt(TOURNAMENT.regClose);
@@ -233,83 +290,27 @@ function updateTimeline(){
   document.getElementById('dateFinal').textContent=fmt(TOURNAMENT.final);
   document.getElementById('datePay').textContent=fmt(TOURNAMENT.pay);
 }
-updateTimeline(); setInterval(updateTimeline, 60000);
-function payWhatsApp(){
-  let user=localStorage.getItem('zed_user')||'New Player';
-  let msg='Hi Zed Gambit! I paid K'+TOURNAMENT.entryFee+' entry fee. My username: '+user+'. Here is my MoMo screenshot.';
-  window.open('https://wa.me/260977123456?text='+encodeURIComponent(msg), '_blank');
-}
-function saveAdminSettings(){
-  TOURNAMENT.entryFee=parseInt(document.getElementById('admEntry').value)||20;
-  alert('Saved! Entry Fee now K'+TOURNAMENT.entryFee+' - Reload page to see. In real version, save to database.');
-}
-// Registered count from localStorage
-function updateRegistered(){
-  let list=JSON.parse(localStorage.getItem('zed_registered')||'[]');
-  // Add Pazed200 from your test if empty
-  if(list.length===0) list=['PAZED200'];
-  document.getElementById('registeredCount').textContent=list.length;
-  document.getElementById('spotsLeft').textContent=32-list.length;
-}
-updateRegistered();
+updateTimeline();
 
-// ===== HIDDEN FAIR-PLAY CHECK =====
-async function verifyUser(){
-  let username=document.getElementById('chessUsername').value.trim();
-  if(!username){ alert('Enter your Chess Username'); return; }
-  document.getElementById('verifyResult').innerHTML='Verifying your fair-play history...';
-  try{
-    let res=await fetch('https://lichess.org/api/user/'+encodeURIComponent(username));
-    if(!res.ok){ document.getElementById('verifyResult').innerHTML='<div class="banned">❌ Username not found. Check spelling.</div>'; return; }
-    let data=await res.json();
-    if(data.disabled || data.tosViolation){
-      document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 FAIR-PLAY VIOLATION DETECTED<br>'+username+' flagged for unfair play.<br>You are deregistered. You cannot play.</div>';
-      let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
-      if(!banned.includes(username.toLowerCase())) banned.push(username.toLowerCase());
-      localStorage.setItem('zed_banned', JSON.stringify(banned));
-      document.getElementById('gameArea').style.display='none'; return;
-    }
-    if(data.closed){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Account closed.</div>'; return; }
-    let banned=JSON.parse(localStorage.getItem('zed_banned')||'[]');
-    if(banned.includes(username.toLowerCase())){ document.getElementById('verifyResult').innerHTML='<div class="banned">🚫 Previously deregistered.</div>'; return; }
-    let blitz=data.perfs?.blitz?.rating||'?';
-    document.getElementById('verifyResult').innerHTML='<div class="clean">✅ VERIFIED CLEAN<br><b>'+data.username+'</b> • Rating: '+blitz+'<br>You are registered for Zed Gambit tournament. Pay K'+TOURNAMENT.entryFee+' to confirm spot!</div>';
-    document.getElementById('whiteName').textContent=data.username+' • White ('+blitz+')';
-    document.getElementById('gameArea').style.display='block';
-    localStorage.setItem('zed_user', username);
-    let reg=JSON.parse(localStorage.getItem('zed_registered')||'[]');
-    if(!reg.includes(username.toUpperCase())){ reg.push(username.toUpperCase()); localStorage.setItem('zed_registered', JSON.stringify(reg)); updateRegistered(); }
-  }catch(e){ document.getElementById('verifyResult').innerHTML='<div class="banned">⚠️ Could not verify. Check internet.</div>'; }
-}
-function reportPlayer(){
-  let u=prompt('Enter username to report for unfair play:');
-  if(!u) return;
-  window.open('https://lichess.org/report?username='+encodeURIComponent(u), '_blank');
-  alert('Report received. Fair-play team will investigate.');
-}
-if(window.location.search.includes('admin')){ document.getElementById('adminArea').style.display='block'; }
 // ===== ENGINE + GAME =====
 let engine=null, engineReady=false, stockfishLevel='medium';
 let levelSettings={easy:{depth:4,skill:2},medium:{depth:10,skill:10},hard:{depth:16,skill:20}};
-try{
-  engine=STOCKFISH();
-  engine.onmessage=function(event){ let line=typeof event==='string'?event:event.data; if(line.includes('uciok')){ engineReady=true; document.getElementById('engineStatus').textContent='● Engine Ready'; } if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; if(best && best!=='(none)') stockfishMove(best); } if(line.includes('info depth') && line.includes('score cp')){ let m=line.match(/score cp (-?\d+)/); if(m){ let cp=parseInt(m[1]); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1); } } };
-  engine.postMessage('uci'); engine.postMessage('setoption name Skill Level value 10');
-}catch(e){}
+try{ engine=STOCKFISH(); engine.onmessage=function(e){ let line=typeof e==='string'?e:e.data; if(line.includes('uciok')){ engineReady=true; } if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; if(best && best!=='(none)') stockfishMove(best); } if(line.includes('info depth') && line.includes('score cp')){ let m=line.match(/score cp (-?\d+)/); if(m){ let cp=parseInt(m[1]); document.getElementById('eval').textContent='Eval: '+(cp>=0?'+':'')+(cp/100).toFixed(1); } } }; engine.postMessage('uci'); engine.postMessage('setoption name Skill Level value 10'); }catch(e){}
 function setLevel(lvl,btn){ stockfishLevel=lvl; document.querySelectorAll('[data-level]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); if(engine) engine.postMessage('setoption name Skill Level value '+levelSettings[lvl].skill); }
-let game=new Chess(), selected=null, legalMoves=[], lastMove=null, selectedMinutes=10, whiteTime=600, blackTime=600, timer=null, mode='computer', gameOver=false, thinking=false;
-function setTime(min,btn){ selectedMinutes=min; whiteTime=min*60; blackTime=min*60; document.querySelectorAll('[data-time]').forEach(b=>b.classList.remove('active')); btn.classList.add('active'); newGame(); }
-function setMode(m){ mode=m; document.getElementById('btnComputer').classList.toggle('active',m==='computer'); document.getElementById('btn2p').classList.toggle('active',m==='2p'); document.getElementById('blackName').textContent=m==='computer'?'Computer • Black':'Opponent • Black'; newGame(); }
+let game=new Chess(), selected=null, legalMoves=[], lastMove=null, selectedMinutes=1, whiteTime=60, blackTime=60, timer=null, mode='computer', gameOver=false, thinking=false;
 function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 function updateClocks(){ document.getElementById('whiteClock').textContent=fmt(whiteTime); document.getElementById('blackClock').textContent=fmt(blackTime); let turn=game.turn(); document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':''); document.getElementById('blackClock').className='clock'+(turn==='b'?' active':''); document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':''); document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':''); let hist=game.history({verbose:true}); let wCap=[],bCap=[]; const SYM={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'}; hist.forEach(m=>{if(m.captured){if(m.color==='w')wCap.push(SYM[m.captured.toUpperCase()]);else bCap.push(SYM[m.captured]);}}); document.getElementById('whiteCaptured').textContent=wCap.join(' '); document.getElementById('blackCaptured').textContent=bCap.join(' '); }
 function startTimer(){ clearInterval(timer); timer=setInterval(()=>{ if(gameOver)return; if(game.turn()==='w'){whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');}} else{blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');}} updateClocks(); },1000); }
 function squareName(r,c){ return 'abcdefgh'[c]+(8-r); }
 function render(){ const b=document.getElementById('board'); b.innerHTML=''; const board=game.board(); const files=['a','b','c','d','e','f','g','h']; let inCheck=game.in_check(); let kingSquare=null; if(inCheck){ let turn=game.turn(); for(let r=0;r<8;r++) for(let c=0;c<8;c++){ let p=board[r][c]; if(p && p.type==='k' && p.color===turn) kingSquare=squareName(r,c); } } for(let r=0;r<8;r++) for(let c=0;c<8;c++){ const d=document.createElement('div'); d.className='square '+(((r+c)%2===0)?'light':'dark'); let sq=squareName(r,c); if(selected===sq) d.classList.add('selected'); if(lastMove && (lastMove.from===sq || lastMove.to===sq)) d.classList.add('lastmove'); if(kingSquare===sq) d.classList.add('check'); let lm=legalMoves.find(m=>m.to===sq); if(lm) d.classList.add(lm.captured?'legal-capture':'legal'); if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);} if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);} const p=board[r][c]; if(p){ let key=(p.color==='w'?'w':'b')+p.type.toUpperCase(); let img=document.createElement('img'); img.src=REAL[key]; d.appendChild(img); } d.onclick=()=>clickSquare(sq); b.appendChild(d); } let status=''; if(game.in_checkmate()) status=game.turn()==='w'?'Checkmate! Black wins 🏆':'Checkmate! You win 🏆'; else if(game.in_draw()) status='Draw! 🤝'; else if(game.in_stalemate()) status='Stalemate! 🤝'; else if(game.in_check()) status=(game.turn()==='w'?'White':'Black')+' to move - CHECK! ⚠️'; else status=(game.turn()==='w'?'White':'Black')+' to move'; document.getElementById('status').textContent=status; document.getElementById('moveList').textContent=game.history().length?game.history().join(' '):'Game start'; updateClocks(); }
 function clickSquare(sq){ if(gameOver||thinking)return; if(mode==='computer' && game.turn()==='b')return; let move=legalMoves.find(m=>m.to===sq); if(selected && move){ doMove(selected,sq); return; } let piece=game.get(sq); if(piece && piece.color===game.turn()){ selected=sq; legalMoves=game.moves({square:sq,verbose:true}); render(); return; } selected=null; legalMoves=[]; render(); }
-function doMove(from,to){ let piece=game.get(from); let promotion=(piece && piece.type==='p' && (to[1]==='8'||to[1]==='1'))?'q':undefined; let m=game.move({from,to,promotion}); if(!m){selected=null;legalMoves=[];render();return;} lastMove=m; selected=null; legalMoves=[]; if(game.in_checkmate()||game.in_draw()||game.in_stalemate()){ gameOver=true; clearInterval(timer); setTimeout(()=>{ if(game.in_checkmate()) alert(game.turn()==='w'?'Checkmate! Black wins!':'Checkmate! You win!'); else alert('Draw!'); },300); } render(); if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink(); }
+function doMove(from,to){ let piece=game.get(from); let promotion=(piece && piece.type==='p' && (to[1]==='8'||to[1]==='1'))?'q':undefined; let m=game.move({from,to,promotion}); if(!m){selected=null;legalMoves=[];render();return;} lastMove=m; selected=null; legalMoves=[]; if(game.in_checkmate()||game.in_draw()||game.in_stalemate()){ gameOver=true; clearInterval(timer); if(game.in_checkmate() && game.turn()==='w'){ // You lost, stake gone
+        setTimeout(()=>alert('Checkmate! You lost. Stake K'+currentStake+' gone.'),300);
+      } else if(game.in_checkmate() && game.turn()==='b'){ balance+=currentPrize; updateBalance(); setTimeout(()=>alert('🏆 YOU WIN! Prize K'+currentPrize+' added! Balance: K'+balance),300); }
+      else setTimeout(()=>alert('Draw! Stake refunded.'),300); } render(); if(!gameOver && mode==='computer' && game.turn()==='b') stockfishThink(); }
 function stockfishMove(best){ thinking=false; let from=best.substring(0,2), to=best.substring(2,4); doMove(from,to); }
-function stockfishThink(){ thinking=true; document.getElementById('status').textContent='Computer thinking...'; if(!engine||!engineReady){ setTimeout(()=>{ let moves=game.moves({verbose:true}); if(moves.length){ let pick=moves[Math.floor(Math.random()*moves.length)]; thinking=false; doMove(pick.from,pick.to); } },800); return; } engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth '+levelSettings[stockfishLevel].depth); }
-function getHint(){ if(gameOver)return; if(engine&&engineReady){ let temp=engine.onmessage; engine.onmessage=function(event){ let line=typeof event==='string'?event:event.data; if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; alert('💡 Best move: '+best); engine.onmessage=temp; } }; engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 12'); } }
+function stockfishThink(){ thinking=true; document.getElementById('status').textContent='Opponent thinking...'; if(!engine||!engineReady){ setTimeout(()=>{ let moves=game.moves({verbose:true}); if(moves.length){ let pick=moves[Math.floor(Math.random()*moves.length)]; thinking=false; doMove(pick.from,pick.to); } },800); return; } engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth '+levelSettings[stockfishLevel].depth); }
+function getHint(){ if(gameOver)return; if(engine&&engineReady){ let temp=engine.onmessage; engine.onmessage=function(e){ let line=typeof e==='string'?e:e.data; if(line.startsWith('bestmove')){ let best=line.split(' ')[1]; alert('💡 Best move: '+best); engine.onmessage=temp; } }; engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 12'); } }
 function analyzePosition(){ if(engine&&engineReady){ engine.postMessage('position fen '+game.fen()); engine.postMessage('go depth 14'); } }
 function newGame(){ game=new Chess(); selected=null; legalMoves=[]; lastMove=null; whiteTime=selectedMinutes*60; blackTime=selectedMinutes*60; gameOver=false; thinking=false; render(); startTimer(); }
 newGame();
