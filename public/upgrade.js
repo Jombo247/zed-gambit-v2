@@ -186,6 +186,29 @@ function fixPeace(){
   });
 }
 setInterval(fixPeace, 1000);
+// Inject chess controls into game UI
+function addChessControls(){
+  const gameArea = document.querySelector('div[style*="chessboard"]');
+  if(!gameArea || document.getElementById('zg-chess-controls')) return;
+  const c = document.createElement('div'); c.id = 'zg-chess-controls';
+  c.innerHTML = `
+    <button style="background:#3b82f6">Offer Draw</button>
+    <button style="background:#ef4444">Resign</button>
+    <button style="background:#22c55e">Claim Win</button>
+  `;
+  c.style.cssText = 'display:flex;gap:8px;margin:10px 0;';
+  gameArea.appendChild(c);
+  // Wire buttons
+  c.querySelectorAll('button').forEach(btn=>{
+    btn.onclick = ()=>{
+      const t = btn.textContent;
+      if(t.includes('Draw')) alert('Draw offered!'); // Wire to backend
+      if(t.includes('Resign')) alert('Resign - game over!'); // Wire
+      if(t.includes('Claim')) alert('Claiming win!'); // Wire
+    };
+  });
+}
+setInterval(addChessControls, 1000);
 
 
 
