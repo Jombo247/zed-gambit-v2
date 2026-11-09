@@ -4,35 +4,59 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Zed Gambit - Real Pieces</title>
+<title>Zed Gambit</title>
 <style>
 body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;text-align:center}
-#board{width:min(92vw,420px);height:min(92vw,420px);margin:10px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
+.player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:420px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
+.player-bar.active{outline:2px solid #facc15}
+.avatar{width:32px;height:32px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;font-size:18px}
+.clock{background:#000;color:#fff;padding:6px 12px;border-radius:8px;font-size:22px;font-weight:800;min-width:70px}
+.clock.low{color:#ef4444}
+.clock.active{background:#facc15;color:#000}
+#board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
 .light{background:#ebecd0}.dark{background:#739552}
-.square.selected{outline:3px solid yellow;outline-offset:-3px}
+.square.selected{outline:3px solid #facc15;outline-offset:-3px}
 .square.lastmove{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.35)}
 .square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
 button{padding:12px 18px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:4px}
+.captured{font-size:18px;min-height:24px;text-align:left}
+.moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
 </style>
 </head>
 <body>
 <h2 style="margin:5px">♞ Zed Gambit</h2>
-<div id="board"></div>
-<div style="background:#1f2937;padding:12px;border-radius:12px;max-width:420px;margin:auto;display:flex;justify-content:space-between;align-items:center">
-<span id="turn">White - You</span><span id="clock" style="font-size:22px;font-weight:800">10:00</span>
+
+<!-- OPPONENT - TOP -->
+<div class="player-bar" id="blackBar">
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="avatar">👤</div>
+    <div style="text-align:left"><div style="font-weight:800">Opponent • Black</div><div id="blackCaptured" class="captured"></div></div>
+  </div>
+  <div class="clock" id="blackClock">10:00</div>
 </div>
-<p style="color:#facc15">You are WHITE • Real SVG Graphics</p>
+
+<div id="board"></div>
+
+<!-- YOU - BOTTOM -->
+<div class="player-bar" id="whiteBar">
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="avatar">😀</div>
+    <div style="text-align:left"><div style="font-weight:800">You • White</div><div id="whiteCaptured" class="captured"></div></div>
+  </div>
+  <div class="clock" id="whiteClock">10:00</div>
+</div>
+
+<p style="color:#facc15;margin:4px">You are WHITE • Real SVG Graphics</p>
 <div>
 <button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
 <button style="background:#3b82f6" onclick="alert('Draw offered')">🤝 Offer Draw</button>
 <button style="background:#ef4444" onclick="if(confirm('Resign?')) newGame()">🏳️ Resign</button>
 </div>
-<p style="font-size:12px;opacity:.7">Yellow = Last Move • Green = Selected • Clock paused</p>
+<div class="moves"><b>Moves:</b> <span id="moveList">Game start</span></div>
 
 <script>
-// REAL PIECES - YOUR 12 LINKS
 const REAL = {
   wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
   wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
@@ -47,8 +71,9 @@ const REAL = {
   bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
   bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
 };
-
+const SYMBOL = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
 let board, selected=null, lastMove=null, turn='w';
+let whiteTime=600, blackTime=600, timer=null, moveNum=1, moves=[], capturedByWhite=[], capturedByBlack=[];
 function startBoard(){
   board=[
     ['bR','bN','bB','bQ','bK','bB','bN','bR'],
@@ -61,38 +86,60 @@ function startBoard(){
     ['wR','wN','wB','wQ','wK','wB','wN','wR'],
   ];
 }
+function fmt(s){let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
+function updateClocks(){
+  document.getElementById('whiteClock').textContent=fmt(whiteTime);
+  document.getElementById('blackClock').textContent=fmt(blackTime);
+  document.getElementById('whiteClock').className='clock'+(turn==='w'?' active':'')+(whiteTime<30?' low':'');
+  document.getElementById('blackClock').className='clock'+(turn==='b'?' active':'')+(blackTime<30?' low':'');
+  document.getElementById('whiteBar').className='player-bar'+(turn==='w'?' active':'');
+  document.getElementById('blackBar').className='player-bar'+(turn==='b'?' active':'');
+  document.getElementById('whiteCaptured').textContent=capturedByWhite.map(p=>SYMBOL[p[1].toLowerCase()]).join(' ');
+  document.getElementById('blackCaptured').textContent=capturedByBlack.map(p=>SYMBOL[p[1]]).join(' ');
+}
+function startTimer(){
+  clearInterval(timer);
+  timer=setInterval(()=>{
+    if(turn==='w'){ whiteTime--; if(whiteTime<=0){clearInterval(timer); alert('Time up! Black wins');} }
+    else{ blackTime--; if(blackTime<=0){clearInterval(timer); alert('Time up! White wins');} }
+    updateClocks();
+  },1000);
+}
 function render(){
   const b=document.getElementById('board'); b.innerHTML='';
   const files=['a','b','c','d','e','f','g','h'];
-  for(let r=0;r<8;r++){
-    for(let c=0;c<8;c++){
-      const d=document.createElement('div');
-      d.className='square '+(((r+c)%2===0)?'light':'dark');
-      if(selected && selected[0]===r && selected[1]===c) d.classList.add('selected');
-      if(lastMove && ((lastMove[0]===r && lastMove[1]===c)||(lastMove[2]===r && lastMove[3]===c))) d.classList.add('lastmove');
-      if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}
-      if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}
-      const p=board[r][c];
-      if(p){let img=document.createElement('img');img.src=REAL[p];img.alt=p;d.appendChild(img);}
-      d.onclick=()=>clickSquare(r,c);
-      b.appendChild(d);
-    }
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    const d=document.createElement('div');
+    d.className='square '+(((r+c)%2===0)?'light':'dark');
+    if(selected && selected[0]===r && selected[1]===c) d.classList.add('selected');
+    if(lastMove && ((lastMove[0]===r && lastMove[1]===c)||(lastMove[2]===r && lastMove[3]===c))) d.classList.add('lastmove');
+    if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}
+    if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}
+    const p=board[r][c];
+    if(p){let img=document.createElement('img');img.src=REAL[p];img.alt=p;d.appendChild(img);}
+    d.onclick=()=>clickSquare(r,c);
+    b.appendChild(d);
   }
-  document.getElementById('turn').textContent = turn==='w' ? 'White - You' : 'Black - You';
+  updateClocks();
 }
 function clickSquare(r,c){
   if(selected){
-    // move
-    board[r][c]=board[selected[0]][selected[1]];
-    board[selected[0]][selected[1]]=null;
-    lastMove=[selected[0],selected[1],r,c];
-    selected=null; turn=turn==='w'?'b':'w';
+    let from=selected, piece=board[from[0]][from[1]], captured=board[r][c];
+    if(captured){
+      if(captured[0]==='w') capturedByBlack.push(captured); else capturedByWhite.push(captured);
+    }
+    const files=['a','b','c','d','e','f','g','h'];
+    let moveStr=files[from[1]]+(8-from[0])+'-'+files[c]+(8-r);
+    if(turn==='w'){ moves.push(moveNum+'. '+moveStr); } else { moves[moves.length-1]+=' '+moveStr; moveNum++; }
+    document.getElementById('moveList').textContent=moves.join('  ');
+    board[r][c]=piece; board[from[0]][from[1]]=null;
+    lastMove=[from[0],from[1],r,c]; selected=null; turn=turn==='w'?'b':'w';
     render(); return;
   }
-  if(board[r][c]){ selected=[r,c]; render(); }
+  if(board[r][c] && ((turn==='w' && board[r][c][0]==='w')||(turn==='b' && board[r][c][0]==='b'))){ selected=[r,c]; render(); }
 }
-function newGame(){ startBoard(); selected=null; lastMove=null; turn='w'; render(); }
-startBoard(); render();
+function newGame(){ startBoard(); selected=null; lastMove=null; turn='w'; whiteTime=600; blackTime=600; moves=[]; moveNum=1; capturedByWhite=[]; capturedByBlack=[]; document.getElementById('moveList').textContent='Game start'; render(); startTimer(); }
+startBoard(); render(); startTimer();
 </script>
 </body>
 </html>
