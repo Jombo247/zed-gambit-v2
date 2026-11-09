@@ -47,6 +47,36 @@ function fixWallet() {
 // Run every 1 second, because App.jsx re-renders
 setInterval(fixWallet, 1000);
 fixWallet();
+// RULE 1: Never edit App.jsx - Fix Free Practice -> Free Arena here
+function fixArenaText() {
+  // Replace all text on page
+  document.querySelectorAll('*').forEach(el => {
+    if (el.children.length === 0 && el.textContent) {
+      if (el.textContent.includes('Free Practice')) {
+        el.textContent = el.textContent.replaceAll('Free Practice', 'Free Arena');
+      }
+      if (el.textContent.includes('Free practice')) {
+        el.textContent = el.textContent.replaceAll('Free practice', 'Free Arena');
+      }
+    }
+  });
+
+  // Allow all arena types without stack / stake
+  // Enable any locked arena buttons
+  document.querySelectorAll('button').forEach(btn => {
+    const t = btn.textContent.toLowerCase();
+    if (t.includes('arena') || t.includes('play') || t.includes('join')) {
+      btn.disabled = false;
+      btn.style.opacity = '1';
+      btn.style.pointerEvents = 'auto';
+    }
+  });
+}
+
+// Run it every 1 sec like fixWallet
+setInterval(fixArenaText, 1000);
+fixArenaText();
+
 
 
 
