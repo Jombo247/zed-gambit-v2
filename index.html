@@ -1,17 +1,100 @@
-<!doctype html>
-<html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Zed Gambit</title>
-  </head>
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.jsx"></script>
-<script src="/upgrade.js"></script>
-script src="/upgrade.js"></script>
+
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Zed Gambit - Real Pieces</title>
+<style>
+body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;text-align:center}
+#board{width:min(92vw,420px);height:min(92vw,420px);margin:10px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
+.square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
+.light{background:#ebecd0}.dark{background:#739552}
+.square.selected{outline:3px solid yellow;outline-offset:-3px}
+.square.lastmove{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.35)}
+.square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
+.coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
+button{padding:12px 18px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:4px}
+</style>
+</head>
+<body>
+<h2 style="margin:5px">♞ Zed Gambit</h2>
+<div id="board"></div>
+<div style="background:#1f2937;padding:12px;border-radius:12px;max-width:420px;margin:auto;display:flex;justify-content:space-between;align-items:center">
+<span id="turn">White - You</span><span id="clock" style="font-size:22px;font-weight:800">10:00</span>
+</div>
+<p style="color:#facc15">You are WHITE • Real SVG Graphics</p>
+<div>
+<button style="background:#22c55e" onclick="newGame()">🔄 New Game</button>
+<button style="background:#3b82f6" onclick="alert('Draw offered')">🤝 Offer Draw</button>
+<button style="background:#ef4444" onclick="if(confirm('Resign?')) newGame()">🏳️ Resign</button>
+</div>
+<p style="font-size:12px;opacity:.7">Yellow = Last Move • Green = Selected • Clock paused</p>
+
+<script>
+// REAL PIECES - YOUR 12 LINKS
+const REAL = {
+  wK:'https://lichess1.org/assets/piece/cburnett/wK.svg',
+  wQ:'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+  wR:'https://lichess1.org/assets/piece/cburnett/wR.svg',
+  wB:'https://lichess1.org/assets/piece/cburnett/wB.svg',
+  wN:'https://lichess1.org/assets/piece/cburnett/wN.svg',
+  wP:'https://lichess1.org/assets/piece/cburnett/wP.svg',
+  bK:'https://lichess1.org/assets/piece/cburnett/bK.svg',
+  bQ:'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+  bR:'https://lichess1.org/assets/piece/cburnett/bR.svg',
+  bB:'https://lichess1.org/assets/piece/cburnett/bB.svg',
+  bN:'https://lichess1.org/assets/piece/cburnett/bN.svg',
+  bP:'https://lichess1.org/assets/piece/cburnett/bP.svg',
+};
+
+let board, selected=null, lastMove=null, turn='w';
+function startBoard(){
+  board=[
+    ['bR','bN','bB','bQ','bK','bB','bN','bR'],
+    ['bP','bP','bP','bP','bP','bP','bP','bP'],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    [null,null,null,null,null,null,null,null],
+    ['wP','wP','wP','wP','wP','wP','wP','wP'],
+    ['wR','wN','wB','wQ','wK','wB','wN','wR'],
+  ];
+}
+function render(){
+  const b=document.getElementById('board'); b.innerHTML='';
+  const files=['a','b','c','d','e','f','g','h'];
+  for(let r=0;r<8;r++){
+    for(let c=0;c<8;c++){
+      const d=document.createElement('div');
+      d.className='square '+(((r+c)%2===0)?'light':'dark');
+      if(selected && selected[0]===r && selected[1]===c) d.classList.add('selected');
+      if(lastMove && ((lastMove[0]===r && lastMove[1]===c)||(lastMove[2]===r && lastMove[3]===c))) d.classList.add('lastmove');
+      if(c===0){let s=document.createElement('span');s.className='coords';s.style.top='2px';s.style.left='3px';s.textContent=8-r;d.appendChild(s);}
+      if(r===7){let s=document.createElement('span');s.className='coords';s.style.bottom='2px';s.style.right='4px';s.textContent=files[c];d.appendChild(s);}
+      const p=board[r][c];
+      if(p){let img=document.createElement('img');img.src=REAL[p];img.alt=p;d.appendChild(img);}
+      d.onclick=()=>clickSquare(r,c);
+      b.appendChild(d);
+    }
+  }
+  document.getElementById('turn').textContent = turn==='w' ? 'White - You' : 'Black - You';
+}
+function clickSquare(r,c){
+  if(selected){
+    // move
+    board[r][c]=board[selected[0]][selected[1]];
+    board[selected[0]][selected[1]]=null;
+    lastMove=[selected[0],selected[1],r,c];
+    selected=null; turn=turn==='w'?'b':'w';
+    render(); return;
+  }
+  if(board[r][c]){ selected=[r,c]; render(); }
+}
+function newGame(){ startBoard(); selected=null; lastMove=null; turn='w'; render(); }
+startBoard(); render();
+</script>
 </body>
 </html>
-  </body>
-</html>
-<!-- trigger rebuild -->
+
+
