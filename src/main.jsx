@@ -3,7 +3,7 @@ import React from "react"
 import ReactDOM from "react-dom/client"
 import App from "./App"
 import ArenaShell from "./ArenaShell"
-
+import Auth from "./Auth"
 
 const inArena = localStorage.getItem("inArena") === "true"
 
@@ -25,6 +25,7 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       onReturn={goBack}
       onResign={resign}
     />
+    <Auth />
     <App />
   </React.StrictMode>
 )
