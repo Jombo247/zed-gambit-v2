@@ -72,17 +72,24 @@ function gatePhone(){
 
 // Run
 setInterval(()=>{ addGameControls(); addSeriousBanner(); styleBoard(); gatePhone(); }, 1000);
+Best way - use real high-quality SVG pieces. Don't use emoji / toy pieces.
 
 
-Do this:
-1. public/upgrade.js > Select All > Delete
-2. Paste code above
-3. Commit > Wait 1 min > Hard reload
+// High Quality Pieces - Cburnett set from Lichess
+const PIECE_URLS = {
+  'K': 'https://lichess1.org/assets/piece/cburnett/wK.svg',
+  'Q': 'https://lichess1.org/assets/piece/cburnett/wQ.svg',
+  'R': 'https://lichess1.org/assets/piece/cburnett/wR.svg',
+  'B': 'https://lichess1.org/assets/piece/cburnett/wB.svg',
+  'N': 'https://lichess1.org/assets/piece/cburnett/wN.svg',
+  'P': 'https://lichess1.org/assets/piece/cburnett/wP.svg',
+  'k': 'https://lichess1.org/assets/piece/cburnett/bK.svg',
+  'q': 'https://lichess1.org/assets/piece/cburnett/bQ.svg',
+  'r': 'https://lichess1.org/assets/piece/cburnett/bR.svg',
+  'b': 'https://lichess1.org/assets/piece/cburnett/bB.svg',
+  'n': 'https://lichess1.org/assets/piece/cburnett/bN.svg',
+  'p': 'https://lichess1.org/assets/piece/cburnett/bP.svg',
+};
+console.log('ZG: High quality pieces ready', PIECE_URLS);
 
-Now every game - Peace, Rated, Tournament, Free Arena - will have:
-- 🤝 Offer Draw
-- 🏳️ Resign
-- ⚖️ Claim Draw (50-move / repetition / stalemate)
-- 📖 Rules popup
-- 1x Tournament Banner only
 
