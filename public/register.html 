@@ -1,23 +1,22 @@
-<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Register - Zed Gambit</title>
+
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Register</title>
 <style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:20px}input{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:0}button{width:100%;padding:14px;background:#22c55e;border:0;border-radius:10px;font-weight:700}</style></head>
-<body><h2>Create Account</h2>
+<body><h2>Register - Email</h2>
 <input id="u" placeholder="Username">
 <input id="e" placeholder="Email" type="email">
-<input id="p" placeholder="Phone e.g 0977xxxxxx">
 <input id="pw" placeholder="Password" type="password">
-<button onclick="doReg()">Send Verification Code</button>
-<p id="msg"></p>
+<button onclick="doReg()">Send Email Code</button><p id="msg"></p>
 <script>
 function doReg(){
   const u=document.getElementById('u').value;
   const e=document.getElementById('e').value;
-  const ph=document.getElementById('p').value;
   const pw=document.getElementById('pw').value;
-  if(!u||!e||!ph||!pw){document.getElementById('msg').innerText='Fill all fields';return;}
+  if(!u||!e||!pw){document.getElementById('msg').innerText='Fill all fields';return;}
   const code=Math.floor(100000+Math.random()*900000).toString();
-  localStorage.setItem('zg_pending', JSON.stringify({u,e,ph,pw,code,verified:false}));
-  // For now show code on screen - later we send via SMS/Email API
-  alert('Your verification code is: '+code+' (Demo - will send via SMS/Email next)');
-  location.href='/verify.html';
+  localStorage.setItem('zg_pending', JSON.stringify({u,e,pw,emailCode:code,emailVerified:false,phoneVerified:false}));
+  alert('Email code (Demo): '+code);
+  location.href='/verify-email.html';
 }
 </script></body></html>
+
+
