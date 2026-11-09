@@ -209,6 +209,45 @@ function addChessControls(){
   });
 }
 setInterval(addChessControls, 1000);
+// Make board look sharp + minimal
+function stylePeaceBoard(){
+  const board = document.querySelector('div[style*="chessboard"]');
+  if(!board || board.dataset.zgStyled==='yes') return;
+  board.dataset.zgStyled = 'yes';
+  board.style.cssText = 'border:1px solid #94a3b8; border-radius:8px; box-shadow:0 4px 6px #0f172a;';
+  // Tighter squares
+  board.querySelectorAll('.square').forEach(sq=>{
+    sq.style.padding = '0';
+  });
+  // Fancy pieces
+  board.querySelectorAll('.piece').forEach(p=>{
+    p.style.fontSize = '28px';
+    p.style.filter = 'drop-shadow(0 1px 1px #0f172a)';
+  });
+}
+setInterval(stylePeaceBoard, 1000);
+// Clean up any silly animations/toys
+function killToys(){
+  document.querySelectorAll('*').forEach(el=>{
+    if(el.style.animation || el.style.transform){
+      el.style.animation = '';
+      el.style.transform = '';
+    }
+  });
+}
+setInterval(killToys, 1000);
+// Add "Tournament Mode" banner
+function addSeriousBanner(){
+  const h = document.querySelector('h2');
+  if(!h || h.textContent.includes('Tournament')) return;
+  const b = document.createElement('div');
+  b.innerText = '🏆 Tournament Mode';
+  b.style.cssText = 'background:#1e293b; color:#f8fafc; padding:6px 12px; border-radius:6px; font-weight:700; margin:8px 0;';
+  h.after(b);
+}
+setInterval(addSeriousBanner, 1000);
+
+
 
 
 
