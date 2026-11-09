@@ -6,13 +6,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Zed Gambit</title>
 <style>
-body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;text-align:center}
+body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px;text-align:center}
 .player-bar{background:#1f2937;padding:10px 12px;border-radius:12px;max-width:420px;margin:8px auto;display:flex;justify-content:space-between;align-items:center}
 .player-bar.active{outline:2px solid #facc15}
 .avatar{width:32px;height:32px;border-radius:50%;background:#374151;display:flex;align-items:center;justify-content:center;font-size:18px}
 .clock{background:#000;color:#fff;padding:6px 12px;border-radius:8px;font-size:22px;font-weight:800;min-width:70px}
-.clock.low{color:#ef4444}
 .clock.active{background:#facc15;color:#000}
+.clock.low{color:#ef4444}
+.clock.active.low{color:#ef4444}
 #board{width:min(92vw,420px);height:min(92vw,420px);margin:8px auto;display:grid;grid-template-columns:repeat(8,1fr);grid-template-rows:repeat(8,1fr);border:3px solid #000;border-radius:8px;overflow:hidden}
 .square{display:flex;align-items:center;justify-content:center;position:relative;cursor:pointer}
 .light{background:#ebecd0}.dark{background:#739552}
@@ -20,26 +21,40 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .square.lastmove{box-shadow:inset 0 0 0 100px rgba(255,255,0,0.35)}
 .square img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 2px 2px rgba(0,0,0,0.5));pointer-events:none}
 .coords{position:absolute;font-size:10px;font-weight:700;opacity:.7}
-button{padding:12px 18px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:4px}
-.captured{font-size:18px;min-height:24px;text-align:left}
+button{padding:10px 14px;border:0;border-radius:10px;font-weight:800;color:#fff;cursor:pointer;margin:3px}
+.opt{background:#374151}
+.opt.active{background:#facc15;color:#000}
 .moves{background:#1f2937;max-width:420px;margin:8px auto;padding:10px;border-radius:12px;text-align:left;font-size:13px;max-height:90px;overflow-y:auto}
+.captured{font-size:16px;min-height:20px;text-align:left}
 </style>
 </head>
 <body>
 <h2 style="margin:5px">♞ Zed Gambit</h2>
 
-<!-- OPPONENT - TOP -->
+<!-- TIME + MODE CHOOSER -->
+<div style="max-width:420px;margin:auto;background:#1f2937;padding:10px;border-radius:12px">
+<div style="font-size:12px;opacity:.7;margin-bottom:4px">TIME CONTROL</div>
+<button class="opt" data-time="1" onclick="setTime(1,this)">1 min</button>
+<button class="opt" data-time="3" onclick="setTime(3,this)">3 min</button>
+<button class="opt" data-time="5" onclick="setTime(5,this)">5 min</button>
+<button class="opt active" data-time="10" onclick="setTime(10,this)">10 min</button>
+<div style="font-size:12px;opacity:.7;margin:8px 0 4px">OPPONENT</div>
+<button class="opt active" id="btnComputer" onclick="setMode('computer')">🤖 vs Computer</button>
+<button class="opt" id="btn2p" onclick="setMode('2p')">👥 2 Players</button>
+</div>
+
+<!-- OPPONENT -->
 <div class="player-bar" id="blackBar">
   <div style="display:flex;gap:8px;align-items:center">
-    <div class="avatar">👤</div>
-    <div style="text-align:left"><div style="font-weight:800">Opponent • Black</div><div id="blackCaptured" class="captured"></div></div>
+    <div class="avatar" id="blackAvatar">🤖</div>
+    <div style="text-align:left"><div style="font-weight:800" id="blackName">Computer • Black</div><div id="blackCaptured" class="captured"></div></div>
   </div>
   <div class="clock" id="blackClock">10:00</div>
 </div>
 
 <div id="board"></div>
 
-<!-- YOU - BOTTOM -->
+<!-- YOU -->
 <div class="player-bar" id="whiteBar">
   <div style="display:flex;gap:8px;align-items:center">
     <div class="avatar">😀</div>
@@ -73,7 +88,23 @@ const REAL = {
 };
 const SYMBOL = {K:'♔',Q:'♕',R:'♖',B:'♗',N:'♘',P:'♙',k:'♚',q:'♛',r:'♜',b:'♝',n:'♞',p:'♟'};
 let board, selected=null, lastMove=null, turn='w';
-let whiteTime=600, blackTime=600, timer=null, moveNum=1, moves=[], capturedByWhite=[], capturedByBlack=[];
+let selectedMinutes=10, whiteTime=600, blackTime=600, timer=null, moveNum=1, moves=[], capturedByWhite=[], capturedByBlack=[];
+let mode='computer', gameOver=false, thinking=false;
+
+function setTime(min, btn){
+  selectedMinutes=min; whiteTime=min*60; blackTime=min*60;
+  document.querySelectorAll('[data-time]').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  newGame();
+}
+function setMode(m){
+  mode=m;
+  document.getElementById('btnComputer').classList.toggle('active', m==='computer');
+  document.getElementById('btn2p').classList.toggle('active', m==='2p');
+  document.getElementById('blackName').textContent = m==='computer' ? 'Computer • Black' : 'Opponent • Black';
+  document.getElementById('blackAvatar').textContent = m==='computer' ? '🤖' : '👤';
+  newGame();
+}
 function startBoard(){
   board=[
     ['bR','bN','bB','bQ','bK','bB','bN','bR'],
@@ -86,7 +117,7 @@ function startBoard(){
     ['wR','wN','wB','wQ','wK','wB','wN','wR'],
   ];
 }
-function fmt(s){let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
+function fmt(s){if(s<0)s=0;let m=Math.floor(s/60),sec=s%60;return m+':'+(sec<10?'0':'')+sec;}
 function updateClocks(){
   document.getElementById('whiteClock').textContent=fmt(whiteTime);
   document.getElementById('blackClock').textContent=fmt(blackTime);
@@ -100,8 +131,9 @@ function updateClocks(){
 function startTimer(){
   clearInterval(timer);
   timer=setInterval(()=>{
-    if(turn==='w'){ whiteTime--; if(whiteTime<=0){clearInterval(timer); alert('Time up! Black wins');} }
-    else{ blackTime--; if(blackTime<=0){clearInterval(timer); alert('Time up! White wins');} }
+    if(gameOver) return;
+    if(turn==='w'){ whiteTime--; if(whiteTime<=0){gameOver=true;clearInterval(timer);alert('Time up! Black wins');} }
+    else{ blackTime--; if(blackTime<=0){gameOver=true;clearInterval(timer);alert('Time up! White wins');} }
     updateClocks();
   },1000);
 }
@@ -122,23 +154,77 @@ function render(){
   }
   updateClocks();
 }
+function doMove(fr,fc,tr,tc){
+  let piece=board[fr][fc], captured=board[tr][tc];
+  if(captured){ if(captured[0]==='w') capturedByBlack.push(captured); else capturedByWhite.push(captured); }
+  const files=['a','b','c','d','e','f','g','h'];
+  let moveStr=files[fc]+(8-fr)+'-'+files[tc]+(8-tr);
+  if(turn==='w'){ moves.push(moveNum+'. '+moveStr); } else { moves[moves.length-1]+=' '+moveStr; moveNum++; }
+  document.getElementById('moveList').textContent=moves.join('  ');
+  board[tr][tc]=piece; board[fr][fc]=null;
+  // Pawn promotion - auto queen
+  if(piece==='wP' && tr===0) board[tr][tc]='wQ';
+  if(piece==='bP' && tr===7) board[tr][tc]='bQ';
+  lastMove=[fr,fc,tr,tc]; selected=null; turn=turn==='w'?'b':'w';
+  render();
+  if(!gameOver && mode==='computer' && turn==='b') computerMove();
+}
 function clickSquare(r,c){
+  if(gameOver) return;
+  if(thinking) return;
+  if(mode==='computer' && turn==='b') return;
   if(selected){
-    let from=selected, piece=board[from[0]][from[1]], captured=board[r][c];
-    if(captured){
-      if(captured[0]==='w') capturedByBlack.push(captured); else capturedByWhite.push(captured);
-    }
-    const files=['a','b','c','d','e','f','g','h'];
-    let moveStr=files[from[1]]+(8-from[0])+'-'+files[c]+(8-r);
-    if(turn==='w'){ moves.push(moveNum+'. '+moveStr); } else { moves[moves.length-1]+=' '+moveStr; moveNum++; }
-    document.getElementById('moveList').textContent=moves.join('  ');
-    board[r][c]=piece; board[from[0]][from[1]]=null;
-    lastMove=[from[0],from[1],r,c]; selected=null; turn=turn==='w'?'b':'w';
-    render(); return;
+    // Only allow moving your own piece
+    let p=board[selected[0]][selected[1]];
+    if(!p) {selected=null;render();return;}
+    // If clicking own piece again, reselect
+    if(board[r][c] && board[r][c][0]===p[0]){ selected=[r,c]; render(); return; }
+    doMove(selected[0],selected[1],r,c);
+    return;
   }
   if(board[r][c] && ((turn==='w' && board[r][c][0]==='w')||(turn==='b' && board[r][c][0]==='b'))){ selected=[r,c]; render(); }
 }
-function newGame(){ startBoard(); selected=null; lastMove=null; turn='w'; whiteTime=600; blackTime=600; moves=[]; moveNum=1; capturedByWhite=[]; capturedByBlack=[]; document.getElementById('moveList').textContent='Game start'; render(); startTimer(); }
+function computerMove(){
+  thinking=true;
+  setTimeout(()=>{
+    thinking=false;
+    if(gameOver) return;
+    // Find all black pieces and all possible capture / forward moves
+    let options=[];
+    for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+      let p=board[r][c]; if(!p || p[0]!=='b') continue;
+      // Try to capture white pieces first - prefer captures
+      for(let tr=0;tr<8;tr++) for(let tc=0;tc<8;tc++){
+        let target=board[tr][tc];
+        if(target && target[0]==='w'){
+          // Simple: allow capture if within 2 squares (keeps computer active)
+          if(Math.abs(tr-r)<=2 && Math.abs(tc-c)<=2) options.push({fr:r,fc:c,tr,tc,score:10});
+        }
+      }
+      // Normal moves: pawn forward, others random 1 step
+      let dirs=[];
+      if(p==='bP') dirs=[[1,0],[1,1],[1,-1],[2,0]];
+      else dirs=[[1,0],[-1,0],[0,1],[0,-1],[1,1],[1,-1],[-1,1],[-1,-1],[2,1],[2,-1],[-2,1],[-2,-1],[1,2],[1,-2]];
+      for(let d of dirs){
+        let tr=r+d[0], tc=c+d[1];
+        if(tr<0||tr>7||tc<0||tc>7) continue;
+        if(!board[tr][tc]) options.push({fr:r,fc:c,tr,tc,score:1});
+      }
+    }
+    if(options.length===0){ gameOver=true; alert('Computer has no moves - You win!'); return; }
+    // Prefer captures 70% of time
+    let captures=options.filter(o=>o.score===10);
+    let pick = (captures.length>0 && Math.random()<0.7) ? captures[Math.floor(Math.random()*captures.length)] : options[Math.floor(Math.random()*options.length)];
+    doMove(pick.fr,pick.fc,pick.tr,pick.tc);
+  },700);
+}
+function newGame(){
+  startBoard(); selected=null; lastMove=null; turn='w';
+  whiteTime=selectedMinutes*60; blackTime=selectedMinutes*60;
+  moves=[]; moveNum=1; capturedByWhite=[]; capturedByBlack=[]; gameOver=false; thinking=false;
+  document.getElementById('moveList').textContent='Game start';
+  render(); startTimer();
+}
 startBoard(); render(); startTimer();
 </script>
 </body>
