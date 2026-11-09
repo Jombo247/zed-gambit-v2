@@ -1,0 +1,17 @@
+<!DOCTYPE html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Verify Email</title>
+<style>body{background:#0f172a;color:#fff;font-family:sans-serif;padding:20px}input{width:100%;padding:14px;margin:8px 0;border-radius:10px;border:0}button{width:100%;padding:14px;background:#22c55e;border:0;border-radius:10px;font-weight:700}</style></head>
+<body><h2>Verify Email</h2><p>Enter code sent to your email</p>
+<input id="c" placeholder="123456">
+<button onclick="v()">Verify Email</button><p id="msg"></p>
+<script>
+function v(){
+  const p=JSON.parse(localStorage.getItem('zg_pending')||'{}');
+  if(document.getElementById('c').value===p.emailCode){
+    p.emailVerified=true; localStorage.setItem('zg_pending', JSON.stringify(p));
+    localStorage.setItem('zg_user', JSON.stringify(p));
+    localStorage.setItem('zg_email_verified','yes');
+    alert('Email verified! You can now play Free Arena. Verify phone to unlock Wallet.');
+    location.href='/';
+  } else document.getElementById('msg').innerText='Wrong code';
+}
+</script></body></html>
