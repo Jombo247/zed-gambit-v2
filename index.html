@@ -16,6 +16,7 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .game-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:12px}
 .card{background:#1f2937;padding:14px;border-radius:14px;text-align:center;cursor:pointer}
 .card h3{margin:4px 0}
+.card.sel{border:3px solid #22c55e;background:#14532d}
 .btn{width:100%;background:#22c55e;color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;font-size:16px;cursor:pointer;margin-top:10px}
 .btn-yellow{background:#facc15;color:#000}
 .btn-dark{background:#374151}
@@ -34,7 +35,6 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .start-box{background:#1f2937;padding:14px;border-radius:12px;text-align:center;border:2px solid #facc15;margin:10px 0}
 .moves{background:#1f2937;padding:10px;border-radius:10px;min-height:40px;font-size:13px;margin-top:10px;max-height:100px;overflow:auto}
 .tourn-card{background:#1f2937;padding:14px;border-radius:14px;margin:10px 0;border-left:4px solid #facc15}
-.tourn-card b{font-size:16px}
 .badge{display:inline-block;background:#facc15;color:#000;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;margin-left:6px}
 .badge-green{background:#22c55e;color:#fff}
 input,select{width:100%;padding:12px;border-radius:10px;border:0;background:#374151;color:#fff;margin:6px 0;box-sizing:border-box;font-size:15px}
@@ -42,6 +42,24 @@ label{font-size:12px;color:#9ca3af}
 .admin-row{background:#1f2937;padding:12px;border-radius:12px;margin:10px 0;border:1px solid #374151}
 .nav{position:fixed;bottom:0;left:0;right:0;background:#1f2937;display:flex;justify-content:space-around;padding:10px 0;border-top:1px solid #374151}
 .nav div{cursor:pointer;text-align:center;font-size:12px}
+.turn-banner{text-align:center;font-weight:900;padding:10px;border-radius:10px;margin:8px 0;font-size:16px}
+.turn-white{background:#fff;color:#000}
+.turn-black{background:#000;color:#fff;border:1px solid #fff}
+.type-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:10px 0}
+.type-card{background:#1f2937;padding:14px;border-radius:14px;text-align:center;cursor:pointer;border:2px solid transparent}
+.type-card.sel{border-color:#22c55e;background:#14532d}
+.stake-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin:10px 0}
+.stake-card{background:#1f2937;padding:12px;border-radius:12px;text-align:center;cursor:pointer;border:2px solid transparent;font-weight:900}
+.stake-card.sel{border-color:#facc15;background:#713f12}
+.step-bar{display:flex;gap:6px;margin:10px 0}
+.step{flex:1;text-align:center;padding:8px;border-radius:8px;font-size:12px;font-weight:900;background:#374151}
+.step.active{background:#22c55e}
+.step.done{background:#facc15;color:#000}
+.search-box{background:#1f2937;padding:20px;border-radius:16px;text-align:center;margin:12px 0;border:2px solid #22c55e}
+.spinner{font-size:48px;animation:spin 1.5s linear infinite;display:inline-block}
+@keyframes spin{0%{transform:rotate(0deg)}100%{transform:rotate(360deg)}}
+.dot{animation:blink 1s infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
 </style>
 </head>
 <body>
@@ -56,7 +74,7 @@ label{font-size:12px;color:#9ca3af}
   <h2 style="text-align:center">Play Chess - Win Real Money</h2>
   <div class="game-grid">
     <div class="card" onclick="openGame('computer')"><div style="font-size:32px">🤖</div><h3>vs Computer</h3><p>Free Practice</p></div>
-    <div class="card" onclick="openGame('opponent')"><div style="font-size:32px">👥</div><h3>vs Opponent</h3><p>2 Player</p></div>
+    <div class="card" onclick="showPage('opponentPage')"><div style="font-size:32px">👥</div><h3>vs Opponent</h3><p>Online • Quick Pairing</p></div>
     <div class="card" onclick="showPage('arenaPage')"><div style="font-size:32px">🏆</div><h3>Arena</h3><p id="arenaHomeText">Win K70</p></div>
     <div class="card" onclick="showPage('tournamentPage')"><div style="font-size:32px">👑</div><h3>Tournament</h3><p id="tournHomeText">All Rated Types</p></div>
     <div class="card" onclick="openGame('computer')"><div style="font-size:32px">⚡</div><h3>Blitz</h3><p>3 Min - Fast</p></div>
@@ -65,47 +83,95 @@ label{font-size:12px;color:#9ca3af}
     <div class="card" onclick="alert('Leaderboard coming soon')"><div style="font-size:32px">📊</div><h3>Leaderboard</h3><p>Top Players</p></div>
   </div>
   <button class="btn btn-yellow" onclick="openGame('computer')">▶️ PLAY NOW - FREE</button>
-  <button class="btn btn-dark" onclick="showPage('tournamentPage')">👑 VIEW TOURNAMENTS</button>
+  <button class="btn btn-dark" onclick="showPage('opponentPage')">👥 FIND OPPONENT - QUICK PAIRING</button>
 </div>
 
-<!-- ARENA PAGE -->
-<div id="arenaPage" class="page">
-  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
-  <h2>🏆 Arena - Rated Games</h2>
-  <p style="color:#9ca3af;font-size:13px">Rated Arena games. Win = Rating up + Prize. Stakes set by Admin.</p>
-  <div id="arenaList"></div>
-</div>
+<!-- VS OPPONENT - 3 STEPS: TYPE > STAKE > PAIRING -->
+<div id="opponentPage" class="page">
+  <button class="btn btn-dark" onclick="cancelPairing();showPage('homePage')">← Back Home</button>
+  <h2>👥 vs Opponent - Online</h2>
+  <div class="step-bar">
+    <div class="step active" id="step1">1. Game Type</div>
+    <div class="step" id="step2">2. Stake</div>
+    <div class="step" id="step3">3. Pairing</div>
+  </div>
 
-<!-- TOURNAMENT PAGE - MUST INCLUDE ALL TYPES -->
-<div id="tournamentPage" class="page">
-  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
-  <h2>👑 Tournament - All Types</h2>
-  <p style="color:#9ca3af;font-size:13px">All Arena Rated Types in one Tournament. Standard, Rapid, Blitz, Bullet. Stakes controlled by Admin Dashboard.</p>
-  <div style="background:#facc15;color:#000;padding:10px;border-radius:10px;font-weight:900;text-align:center" id="tournBanner">🏆 WEEKLY TOURNAMENT LIVE</div>
-  <div id="tournamentList"></div>
-  <div style="background:#1f2937;padding:12px;border-radius:12px;margin-top:12px;font-size:13px">
-    <b>How Tournament Works:</b><br>
-    1. Pick a type below<br>
-    2. Pay entry fee (Admin set)<br>
-    3. Play rated game - Win = points<br>
-    4. Top players share prize pool
+  <!-- STEP 1: CHOOSE GAME TYPE - ALL STANDARD -->
+  <div id="oppStep1">
+    <p style="color:#9ca3af;font-size:13px">Step 1 - Choose ONE standard game type. You will only be paired with someone who chose SAME type.</p>
+    <div class="type-grid">
+      <div class="type-card" id="type_rapid" onclick="selectType('rapid')"><div style="font-size:30px">⏱️</div><b>Rapid</b><div style="font-size:12px">10 min + 5s</div><div style="font-size:11px;color:#9ca3af">Standard • Rated</div></div>
+      <div class="type-card" id="type_blitz" onclick="selectType('blitz')"><div style="font-size:30px">⚡</div><b>Blitz</b><div style="font-size:12px">3 min + 2s</div><div style="font-size:11px;color:#9ca3af">Standard • Rated</div></div>
+      <div class="type-card" id="type_bullet" onclick="selectType('bullet')"><div style="font-size:30px">🚀</div><b>Bullet</b><div style="font-size:12px">1 min + 0s</div><div style="font-size:11px;color:#9ca3af">Standard • Rated</div></div>
+      <div class="type-card" id="type_superblitz" onclick="selectType('superblitz')"><div style="font-size:30px">🔥</div><b>Super Blitz</b><div style="font-size:12px">5 min + 3s</div><div style="font-size:11px;color:#9ca3af">Standard • Rated</div></div>
+    </div>
+    <label>Your Name</label>
+    <input id="oppName" value="You" placeholder="Your name">
+    <button class="btn" onclick="goToStake()">Next: Choose Stake →</button>
+  </div>
+
+  <!-- STEP 2: CHOOSE STAKE -->
+  <div id="oppStep2" style="display:none">
+    <p style="color:#9ca3af;font-size:13px">Step 2 - Choose stake. You will ONLY be paired with someone who chose <b>SAME game + SAME stake</b>.</p>
+    <div style="background:#facc15;color:#000;padding:10px;border-radius:10px;text-align:center;font-weight:900" id="selectedTypeText">Rapid - 10+5</div>
+    <div class="stake-grid">
+      <div class="stake-card" id="stake_0" onclick="selectStake(0)">FREE<br><span style="font-size:11px">K0 • Practice</span></div>
+      <div class="stake-card" id="stake_5" onclick="selectStake(5)">K5<br><span style="font-size:11px">Win K10</span></div>
+      <div class="stake-card" id="stake_10" onclick="selectStake(10)">K10<br><span style="font-size:11px">Win K20</span></div>
+      <div class="stake-card" id="stake_20" onclick="selectStake(20)">K20<br><span style="font-size:11px">Win K40</span></div>
+      <div class="stake-card" id="stake_50" onclick="selectStake(50)">K50<br><span style="font-size:11px">Win K100</span></div>
+      <div class="stake-card" id="stake_100" onclick="selectStake(100)">K100<br><span style="font-size:11px">Win K200</span></div>
+    </div>
+    <label>Or Custom Stake (K)</label>
+    <input type="number" id="customStake" placeholder="e.g. 30" oninput="selectStake(Number(this.value))">
+    <div style="background:#1f2937;padding:10px;border-radius:10px;font-size:13px;text-align:center" id="stakeSummary">Select a stake to continue</div>
+    <button class="btn btn-dark" onclick="backToType()">← Back to Game Type</button>
+    <button class="btn btn-yellow" onclick="startPairing()">🔍 FIND OPPONENT</button>
+  </div>
+
+  <!-- STEP 3: QUICK PAIRING SEARCH -->
+  <div id="oppStep3" style="display:none">
+    <div class="search-box">
+      <div class="spinner">♟️</div>
+      <h3>Searching for Opponent<span class="dot">...</span></h3>
+      <div style="background:#374151;padding:10px;border-radius:10px;margin:10px 0" id="pairingInfo">Rapid • 10+5 • Stake K20</div>
+      <div style="font-size:13px;color:#d1d5db">Looking for player with<br><b>SAME Game + SAME Stake</b><br>Please wait...</div>
+      <div style="font-size:28px;font-weight:900;margin:10px 0" id="searchTimer">00:00</div>
+      <div style="font-size:12px;color:#9ca3af" id="searchStatus">⏳ Checking queue... 0 players in this pool</div>
+      <div style="background:#111827;height:8px;border-radius:10px;overflow:hidden;margin:12px 0"><div id="searchBar" style="background:#22c55e;height:100%;width:10%"></div></div>
+      <div id="foundBox" style="display:none;background:#22c55e;padding:12px;border-radius:10px;font-weight:900">✅ OPPONENT FOUND!<br><span id="foundName" style="font-weight:400">Opponent_1234</span><br>Starting game...</div>
+    </div>
+    <button class="btn btn-red" onclick="cancelPairing()">✖️ Cancel Search</button>
+    <p style="font-size:11px;color:#9ca3af;text-align:center">If no opponent in 60s, you can play vs Computer or try another stake.<br>Popular stakes fill fastest: K10 Blitz, K20 Rapid.</p>
   </div>
 </div>
 
-<!-- ADMIN DASHBOARD - STAKES CONTROL -->
+<!-- ARENA -->
+<div id="arenaPage" class="page">
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <h2>🏆 Arena - Rated Games</h2>
+  <div id="arenaList"></div>
+</div>
+
+<!-- TOURNAMENT -->
+<div id="tournamentPage" class="page">
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <h2>👑 Tournament - All Types</h2>
+  <div style="background:#facc15;color:#000;padding:10px;border-radius:10px;font-weight:900;text-align:center" id="tournBanner">🏆 WEEKLY TOURNAMENT LIVE</div>
+  <div id="tournamentList"></div>
+</div>
+
+<!-- ADMIN -->
 <div id="adminPage" class="page">
   <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
   <h2>⚙️ Admin Dashboard</h2>
-  <p style="color:#9ca3af;font-size:13px">Only Admin. Change stakes here - it updates Tournament + Arena instantly for all players.</p>
-
   <div id="adminLoginBox" style="background:#1f2937;padding:14px;border-radius:12px">
     <label>Admin PIN (default 1234)</label>
     <input type="password" id="adminPin" placeholder="Enter PIN">
     <button class="btn btn-yellow" onclick="adminLogin()">🔓 Unlock Dashboard</button>
   </div>
-
   <div id="adminControls" style="display:none">
-    <div style="background:#22c55e;color:#fff;padding:10px;border-radius:10px;text-align:center;font-weight:900">✅ Admin Unlocked - Stakes Editable</div>
+    <div style="background:#22c55e;color:#fff;padding:10px;border-radius:10px;text-align:center;font-weight:900">✅ Admin Unlocked</div>
     <label>Tournament Status</label>
     <select id="adm_tournStatus"><option>LIVE</option><option>UPCOMING</option><option>CLOSED</option></select>
     <label>Tournament Name</label>
@@ -113,28 +179,28 @@ label{font-size:12px;color:#9ca3af}
     <div id="adminStakesList"></div>
     <button class="btn" onclick="saveAdmin()">💾 SAVE ALL STAKES</button>
     <button class="btn btn-red" onclick="resetAdmin()">↩️ Reset to Default</button>
-    <p style="font-size:11px;color:#9ca3af">Saved in this device. For live site, connect this to your backend / Firebase later - same fields.</p>
   </div>
 </div>
 
 <!-- GAME PAGE -->
 <div id="gamePage" class="page">
   <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <div id="turnBanner" class="turn-banner turn-white">⚪ White to move</div>
+  <div style="background:#374151;padding:8px;border-radius:8px;text-align:center;font-size:12px" id="matchInfo">Rapid • 10+5 • Stake K20 • Winner K40</div>
   <div class="player-bar"><div><b id="topName">🤖 Stockfish</b><div style="font-size:11px;color:#9ca3af" id="topSub">Black • Opponent</div></div><div class="clock inactive" id="blackClock">10:00</div></div>
   <div id="startBox" class="start-box">
-    <div style="font-weight:900;font-size:17px" id="gameTitle">♟️ Game Ready - NOT Started</div>
-    <div style="font-size:12px;margin:6px 0;color:#d1d5db" id="gameInfo">Clocks PAUSED. Stockfish is waiting.<br>White: 10:00 | Black: 10:00 | +5s per move</div>
+    <div style="font-weight:900;font-size:17px" id="gameTitle">♟️ Game Ready</div>
+    <div style="font-size:12px;margin:6px 0;color:#d1d5db" id="gameInfo">Clocks PAUSED.</div>
     <button class="btn" onclick="startGame()">▶️ START GAME</button>
   </div>
   <div id="board"></div>
-  <div class="player-bar"><div><b id="bottomName">👤 You</b><div style="font-size:11px;color:#9ca3af">White • You</div></div><div class="clock inactive" id="whiteClock">10:00</div></div>
-  <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:6px" id="turnInfo">Press START to play. White moves first.</div>
+  <div class="player-bar"><div><b id="bottomName">👤 You</b><div style="font-size:11px;color:#9ca3af" id="bottomSub">White • You</div></div><div class="clock inactive" id="whiteClock">10:00</div></div>
+  <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:6px" id="turnInfo">Press START</div>
   <div class="moves" id="movesList">Moves will appear here...</div>
   <button class="btn btn-dark" onclick="newGame()">🔄 New Game</button>
   <button class="btn btn-yellow" onclick="resignGame()">🏳️ Resign</button>
 </div>
 
-<!-- BOTTOM NAV -->
 <div class="nav">
   <div onclick="showPage('homePage')">🏠<br>Home</div>
   <div onclick="showPage('arenaPage')">🏆<br>Arena</div>
@@ -143,97 +209,145 @@ label{font-size:12px;color:#9ca3af}
 </div>
 
 <script>
-// ===== ADMIN CONTROLLED STAKES - DEFAULTS =====
-let DEFAULT_STAKES = {
-  tournName: "Weekly Zed Gambit Championship",
-  tournStatus: "LIVE",
-  types: [
-    {id:'standard', name:'Standard', icon:'♟️', time:'15+10', desc:'Standard Rated • 15 min + 10s', entry:20, prize:200, rated:true},
-    {id:'rapid', name:'Rapid', icon:'⏱️', time:'10+5', desc:'Rapid Rated • 10 min + 5s', entry:10, prize:100, rated:true},
-    {id:'blitz', name:'Blitz', icon:'⚡', time:'3+2', desc:'Blitz Rated • 3 min + 2s', entry:5, prize:70, rated:true},
-    {id:'bullet', name:'Bullet', icon:'🚀', time:'1+0', desc:'Bullet Rated • 1 min', entry:5, prize:50, rated:true},
-    {id:'arena', name:'Arena Rated', icon:'🏆', time:'10+5', desc:'Arena Rated • Continuous Arena', entry:10, prize:150, rated:true},
-  ]
-};
+let DEFAULT_STAKES = { tournName:"Weekly Zed Gambit Championship", tournStatus:"LIVE", types:[
+  {id:'standard',name:'Standard',icon:'♟️',time:'15+10',desc:'Standard Rated • 15 min + 10s',entry:20,prize:200,rated:true},
+  {id:'rapid',name:'Rapid',icon:'⏱️',time:'10+5',desc:'Rapid Rated • 10 min + 5s',entry:10,prize:100,rated:true},
+  {id:'blitz',name:'Blitz',icon:'⚡',time:'3+2',desc:'Blitz Rated • 3 min + 2s',entry:5,prize:70,rated:true},
+  {id:'bullet',name:'Bullet',icon:'🚀',time:'1+0',desc:'Bullet Rated • 1 min',entry:5,prize:50,rated:true},
+  {id:'arena',name:'Arena Rated',icon:'🏆',time:'10+5',desc:'Arena Rated • Continuous Arena',entry:10,prize:150,rated:true},
+]};
 let STAKES = JSON.parse(localStorage.getItem('zed_stakes') || JSON.stringify(DEFAULT_STAKES));
-
 function saveStakes(){ localStorage.setItem('zed_stakes', JSON.stringify(STAKES)); renderTournaments(); }
 function renderTournaments(){
-  let html = '';
-  STAKES.types.forEach(t=>{
-    html += `<div class="tourn-card">
-      <b>${t.icon} ${t.name} <span class="badge">${t.time}</span> ${t.rated?'<span class="badge badge-green">RATED</span>':''}</b>
-      <div style="font-size:12px;color:#d1d5db;margin:6px 0">${t.desc}</div>
-      <div style="display:flex;gap:8px;font-size:13px"><div style="background:#374151;padding:6px 10px;border-radius:8px">Entry: <b>K${t.entry}</b></div><div style="background:#facc15;color:#000;padding:6px 10px;border-radius:8px">Prize: <b>K${t.prize}</b></div><div style="background:#374151;padding:6px 10px;border-radius:8px">Status: <b>${STAKES.tournStatus}</b></div></div>
-      <button class="btn btn-yellow" onclick="joinTournament('${t.id}')">Join ${t.name} - Pay K${t.entry}</button>
-    </div>`;
-  });
-  document.getElementById('tournamentList').innerHTML = html;
-  document.getElementById('arenaList').innerHTML = html;
-  document.getElementById('tournBanner').textContent = '🏆 ' + STAKES.tournName + ' - ' + STAKES.tournStatus;
-  document.getElementById('tournHomeText').textContent = 'Entry from K' + Math.min(...STAKES.types.map(x=>x.entry)) + ' - Win up to K' + Math.max(...STAKES.types.map(x=>x.prize));
-  document.getElementById('arenaHomeText').textContent = 'Win up to K' + Math.max(...STAKES.types.map(x=>x.prize));
-  renderAdminList();
+  let html=''; STAKES.types.forEach(t=>{ html+=`<div class="tourn-card"><b>${t.icon} ${t.name} <span class="badge">${t.time}</span> <span class="badge badge-green">RATED</span></b><div style="font-size:12px;color:#d1d5db;margin:6px 0">${t.desc}</div><div style="display:flex;gap:8px;font-size:13px"><div style="background:#374151;padding:6px 10px;border-radius:8px">Entry: <b>K${t.entry}</b></div><div style="background:#facc15;color:#000;padding:6px 10px;border-radius:8px">Prize: <b>K${t.prize}</b></div></div><button class="btn btn-yellow" onclick="joinTournament('${t.id}')">Join ${t.name} - Pay K${t.entry}</button></div>`; });
+  document.getElementById('tournamentList').innerHTML=html; document.getElementById('arenaList').innerHTML=html;
+  document.getElementById('tournBanner').textContent='🏆 '+STAKES.tournName+' - '+STAKES.tournStatus;
+  document.getElementById('tournHomeText').textContent='Entry from K'+Math.min(...STAKES.types.map(x=>x.entry))+' - Win up to K'+Math.max(...STAKES.types.map(x=>x.prize));
+  document.getElementById('arenaHomeText').textContent='Win up to K'+Math.max(...STAKES.types.map(x=>x.prize)); renderAdminList();
 }
-function joinTournament(id){
-  let t = STAKES.types.find(x=>x.id===id);
-  if(!t) return;
-  if(confirm(`Join ${t.name} Tournament?\n\nType: ${t.name} (${t.time}) - RATED\nEntry: K${t.entry}\nPrize: K${t.prize}\n\nPayment via MTN / Airtel / Zamtel Kwacha (Instacom) coming next.`)){
-    openGameWithType(t);
+function joinTournament(id){ let t=STAKES.types.find(x=>x.id===id); if(confirm(`Join ${t.name}?\nEntry K${t.entry} - Prize K${t.prize}`)){ openGameWithType(t); } }
+function openGameWithType(t){ let mins=t.id==='bullet'?1:t.id==='blitz'?3:t.id==='rapid'||t.id==='arena'?10:15; let inc=t.id==='standard'?10:t.id==='bullet'?0:t.id==='blitz'?2:5; CURRENT_TYPE=t; CURRENT_MINS=mins; CURRENT_INC=inc; mode='computer'; showPage('gamePage'); newGame(); }
+function renderAdminList(){ let c=document.getElementById('adminStakesList'); if(!c) return; let html=''; STAKES.types.forEach((t,i)=>{ html+=`<div class="admin-row"><b>${t.icon} ${t.name}</b><label>Entry</label><input type="number" id="entry_${i}" value="${t.entry}"><label>Prize</label><input type="number" id="prize_${i}" value="${t.prize}"></div>`; }); c.innerHTML=html; document.getElementById('adm_tournName').value=STAKES.tournName; document.getElementById('adm_tournStatus').value=STAKES.tournStatus; }
+function adminLogin(){ if(document.getElementById('adminPin').value==='1234'){ document.getElementById('adminLoginBox').style.display='none'; document.getElementById('adminControls').style.display='block'; renderAdminList(); } else alert('Wrong PIN'); }
+function saveAdmin(){ STAKES.tournName=document.getElementById('adm_tournName').value; STAKES.tournStatus=document.getElementById('adm_tournStatus').value; STAKES.types.forEach((t,i)=>{ t.entry=Number(document.getElementById('entry_'+i).value); t.prize=Number(document.getElementById('prize_'+i).value); }); saveStakes(); alert('✅ Saved'); }
+function resetAdmin(){ if(confirm('Reset?')){ STAKES=JSON.parse(JSON.stringify(DEFAULT_STAKES)); saveStakes(); } }
+function showPage(id){ document.querySelectorAll('.page').forEach(p=>p.classList.remove('active')); document.getElementById(id).classList.add('active'); window.scrollTo(0,0); }
+
+// ===== VS OPPONENT - QUICK PAIRING =====
+let OPP_TYPES = {
+  rapid:{name:'Rapid', time:'10+5', mins:10, inc:5, icon:'⏱️'},
+  blitz:{name:'Blitz', time:'3+2', mins:3, inc:2, icon:'⚡'},
+  bullet:{name:'Bullet', time:'1+0', mins:1, inc:0, icon:'🚀'},
+  superblitz:{name:'Super Blitz', time:'5+3', mins:5, inc:3, icon:'🔥'},
+};
+let selType='rapid', selStake=20, pairingTimer=null, pairingSeconds=0, pairingActive=false, oppName='You', matchedOpponent=null, myColour='w';
+
+function selectType(t){
+  selType=t;
+  document.querySelectorAll('.type-card').forEach(e=>e.classList.remove('sel'));
+  document.getElementById('type_'+t).classList.add('sel');
+}
+function goToStake(){
+  oppName = document.getElementById('oppName').value || 'You';
+  document.getElementById('oppStep1').style.display='none';
+  document.getElementById('oppStep2').style.display='block';
+  document.getElementById('step1').className='step done';
+  document.getElementById('step2').className='step active';
+  document.getElementById('selectedTypeText').textContent = OPP_TYPES[selType].icon+' '+OPP_TYPES[selType].name+' - '+OPP_TYPES[selType].time+' • Standard • Rated';
+  // auto select default stake
+  selectStake(20);
+}
+function backToType(){
+  document.getElementById('oppStep2').style.display='none';
+  document.getElementById('oppStep1').style.display='block';
+  document.getElementById('step1').className='step active';
+  document.getElementById('step2').className='step';
+}
+function selectStake(s){
+  if(!s && s!==0) return;
+  selStake = Number(s);
+  document.querySelectorAll('.stake-card').forEach(e=>e.classList.remove('sel'));
+  let el = document.getElementById('stake_'+s);
+  if(el) el.classList.add('sel');
+  let win = selStake===0 ? 'Friendly - No Prize' : 'Winner takes K'+(selStake*2)+' (K'+selStake+' x 2 players)';
+  document.getElementById('stakeSummary').innerHTML = `<b>${OPP_TYPES[selType].name} • ${OPP_TYPES[selType].time} • Stake K${selStake}</b><br>${win}<br><span style="color:#9ca3af">You will only pair with SAME game + SAME stake</span>`;
+}
+
+function startPairing(){
+  // STEP 3 UI
+  document.getElementById('oppStep2').style.display='none';
+  document.getElementById('oppStep3').style.display='block';
+  document.getElementById('step2').className='step done';
+  document.getElementById('step3').className='step active';
+  document.getElementById('pairingInfo').textContent = `${OPP_TYPES[selType].icon} ${OPP_TYPES[selType].name} • ${OPP_TYPES[selType].time} • Stake K${selStake} • Winner K${selStake*2}`;
+  document.getElementById('foundBox').style.display='none';
+  pairingActive=true; pairingSeconds=0;
+  // Save to queue - this is the pairing key: TYPE + STAKE
+  let queueKey = selType + '_' + selStake;
+  localStorage.setItem('zed_queue', JSON.stringify({type:selType, stake:selStake, name:oppName, time:Date.now(), key:queueKey}));
+  pairingTimer = setInterval(()=>{
+    pairingSeconds++;
+    let m = String(Math.floor(pairingSeconds/60)).padStart(2,'0');
+    let s = String(pairingSeconds%60).padStart(2,'0');
+    document.getElementById('searchTimer').textContent = m+':'+s;
+    document.getElementById('searchBar').style.width = Math.min(100, pairingSeconds*2)+'%';
+    // Simulate queue count - in real backend this comes from Firebase
+    let fakeCount = Math.floor(Math.random()*4)+1;
+    document.getElementById('searchStatus').textContent = `⏳ Checking queue... ${fakeCount} player(s) in ${OPP_TYPES[selType].name} K${selStake} pool`;
+    // After 4-7 seconds, match found (demo) - in real app Firebase will match instantly when 2nd player joins same queueKey
+    if(pairingSeconds>=5){
+      foundOpponent();
+    }
+    if(pairingSeconds>=60){
+      cancelPairing();
+      alert('No opponent found in 60s.\n\nTry: K10 Blitz or K20 Rapid - most popular.\nOr play vs Computer while waiting.');
+    }
+  },1000);
+}
+function foundOpponent(){
+  if(!pairingActive) return;
+  clearInterval(pairingTimer); pairingActive=false;
+  // Random opponent name - in real app this is the other player's real name from queue
+  let names = ['Chanda','Mulenga','Kabwe','Mutinta','Bwalya','Nsofwa','Mweene','Phiri','Zulu',' Banda','Mwansa'];
+  matchedOpponent = names[Math.floor(Math.random()*names.length)].trim() + '_' + Math.floor(1000+Math.random()*9000);
+  // Random colour - one gets White, one gets Black
+  myColour = Math.random()>0.5 ? 'w' : 'b';
+  document.getElementById('foundBox').style.display='block';
+  document.getElementById('foundName').textContent = matchedOpponent + ' • You are ' + (myColour==='w'?'White ⚪':'Black ⚫') + ' • ' + OPP_TYPES[selType].name + ' K' + selStake;
+  document.getElementById('searchStatus').textContent = '✅ Matched! Same Game + Same Stake';
+  setTimeout(()=>{
+    // Start online game
+    startOnlineGame();
+  },1800);
+}
+function cancelPairing(){
+  pairingActive=false;
+  if(pairingTimer) clearInterval(pairingTimer);
+  localStorage.removeItem('zed_queue');
+  document.getElementById('oppStep3').style.display='none';
+  document.getElementById('oppStep2').style.display='none';
+  document.getElementById('oppStep1').style.display='block';
+  document.getElementById('step1').className='step active';
+  document.getElementById('step2').className='step';
+  document.getElementById('step3').className='step';
+}
+function startOnlineGame(){
+  // Setup game with selected type + stake
+  let t = OPP_TYPES[selType];
+  CURRENT_MINS = t.mins; CURRENT_INC = t.inc; CURRENT_TYPE = t; mode='online';
+  document.getElementById('matchInfo').textContent = `${t.icon} ${t.name} • ${t.time} • Stake K${selStake} • Winner K${selStake*2} • vs ${matchedOpponent}`;
+  if(myColour==='w'){
+    document.getElementById('topName').textContent='⚫ '+matchedOpponent; document.getElementById('topSub').textContent='Black • Opponent';
+    document.getElementById('bottomName').textContent='⚪ '+oppName; document.getElementById('bottomSub').textContent='White • You';
+  } else {
+    document.getElementById('topName').textContent='⚪ '+oppName; document.getElementById('topSub').textContent='White • You';
+    document.getElementById('bottomName').textContent='⚫ '+matchedOpponent; document.getElementById('bottomSub').textContent='Black • Opponent';
   }
-}
-function openGameWithType(t){
-  // Map type to clock
-  let mins = t.id==='bullet'?1 : t.id==='blitz'?3 : t.id==='rapid'||t.id==='arena'?10 : 15;
-  let inc = t.id==='standard'?10 : t.id==='bullet'?0 : t.id==='blitz'?2 : 5;
-  CURRENT_TYPE = t; CURRENT_MINS = mins; CURRENT_INC = inc;
-  showPage('gamePage');
-  document.getElementById('gameTitle').textContent = `♟️ ${t.name} Tournament - NOT Started`;
-  document.getElementById('gameInfo').innerHTML = `Rated ${t.name} • ${t.time} • Entry K${t.entry} • Prize K${t.prize}<br>Clocks PAUSED.`;
-  newGame();
-}
-function renderAdminList(){
-  let c = document.getElementById('adminStakesList');
-  if(!c) return;
-  let html = '';
-  STAKES.types.forEach((t,i)=>{
-    html += `<div class="admin-row">
-      <b>${t.icon} ${t.name} - ${t.time} - RATED</b>
-      <label>Entry Fee (K)</label><input type="number" id="entry_${i}" value="${t.entry}">
-      <label>Prize Pool (K)</label><input type="number" id="prize_${i}" value="${t.prize}">
-      <label>Time Control (e.g 15+10)</label><input id="time_${i}" value="${t.time}">
-    </div>`;
-  });
-  c.innerHTML = html;
-  document.getElementById('adm_tournName').value = STAKES.tournName;
-  document.getElementById('adm_tournStatus').value = STAKES.tournStatus;
-}
-function adminLogin(){
-  let pin = document.getElementById('adminPin').value;
-  if(pin==='1234'){
-    document.getElementById('adminLoginBox').style.display='none';
-    document.getElementById('adminControls').style.display='block';
-    renderAdminList();
-  } else alert('Wrong PIN. Default is 1234. Change it in code later.');
-}
-function saveAdmin(){
-  STAKES.tournName = document.getElementById('adm_tournName').value;
-  STAKES.tournStatus = document.getElementById('adm_tournStatus').value;
-  STAKES.types.forEach((t,i)=>{
-    t.entry = Number(document.getElementById('entry_'+i).value);
-    t.prize = Number(document.getElementById('prize_'+i).value);
-    t.time = document.getElementById('time_'+i).value;
-  });
-  saveStakes();
-  alert('✅ Stakes Saved!\n\nTournament + Arena now show new Entry / Prize for all players.');
-}
-function resetAdmin(){
-  if(confirm('Reset stakes to default?')){ STAKES = JSON.parse(JSON.stringify(DEFAULT_STAKES)); saveStakes(); alert('Reset done'); }
-}
-function showPage(id){
-  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
-  document.getElementById(id).classList.add('active');
-  window.scrollTo(0,0);
+  document.getElementById('gameTitle').textContent=`👥 ${oppName} vs ${matchedOpponent}`;
+  document.getElementById('gameInfo').innerHTML=`Online • ${t.name} ${t.time} • Stake K${selStake} • Winner K${selStake*2}<br>You are ${myColour==='w'?'White ⚪':'Black ⚫'} • Clocks PAUSED until both press START`;
+  showPage('gamePage'); newGame();
+  // Reset opponent page for next time
+  setTimeout(()=>{ cancelPairing(); },500);
 }
 
 // ===== GAME ENGINE =====
@@ -245,23 +359,24 @@ try{
   stockfish = STOCKFISH();
   stockfish.onmessage = function(e){
     if(!gameStarted||gameOver) return;
+    if(mode!=='computer') return;
     if(typeof e==='string' && e.indexOf('bestmove')===0){
       let p=e.split(' '); let mv=p[1];
       if(mv && mv!=='(none)') doMove(mv.substring(0,2), mv.substring(2,4), mv.length>4?mv.substring(4,5):'q', true);
     }
   };
 }catch(e){}
-function openGame(m){ mode=m; showPage('gamePage'); CURRENT_TYPE=null; CURRENT_MINS=10; CURRENT_INC=5; newGame(); }
+function openGame(m){ mode=m; CURRENT_TYPE=null; CURRENT_MINS=10; CURRENT_INC=5; document.getElementById('topName').textContent='🤖 Stockfish'; document.getElementById('topSub').textContent='Black • Computer'; document.getElementById('bottomName').textContent='👤 You'; document.getElementById('bottomSub').textContent='White • You'; document.getElementById('matchInfo').textContent='Free Practice • vs Computer'; showPage('gamePage'); newGame(); }
 function newGame(){
   game=new Chess(); selected=null; legalMoves=[]; gameOver=false; gameStarted=false;
   whiteTime=CURRENT_MINS*60; blackTime=CURRENT_MINS*60; lastMove=null; moveCount=0; stopClock();
   document.getElementById('startBox').style.display='block';
   document.getElementById('movesList').textContent='Moves will appear here...';
   document.getElementById('turnInfo').textContent='Press START to play. White moves first.';
-  updateClockDisplay(); render();
+  updateTurnBanner(); updateClockDisplay(); render();
 }
-function startGame(){ if(gameStarted) return; gameStarted=true; document.getElementById('startBox').style.display='none'; document.getElementById('turnInfo').textContent='Game Started! Your move - White.'; startClock(); }
-function resignGame(){ if(!gameStarted){alert('Game not started yet');return;} if(confirm('Resign?')){gameOver=true;gameStarted=false;stopClock();alert('You resigned. Stockfish wins.');} }
+function startGame(){ if(gameStarted) return; gameStarted=true; document.getElementById('startBox').style.display='none'; updateTurnBanner(); document.getElementById('turnInfo').textContent = mode==='online' ? `Online Game Started! ${myColour==='w'?'Your move - White':'Opponent to move - Black'}` : 'Game Started! Your move - White.'; startClock(); }
+function resignGame(){ if(!gameStarted){alert('Game not started yet');return;} if(confirm('Resign? Opponent wins stake.')){ gameOver=true; gameStarted=false; stopClock(); alert('You resigned. Opponent wins K'+(selStake*2)); } }
 function formatTime(s){let m=Math.floor(s/60);let sec=s%60;return m+':'+(sec<10?'0'+sec:sec);}
 function updateClockDisplay(){
   document.getElementById('whiteClock').textContent=formatTime(Math.max(0,whiteTime));
@@ -270,13 +385,28 @@ function updateClockDisplay(){
   document.getElementById('whiteClock').className='clock '+(gameStarted&&turn==='w'?'active':'inactive');
   document.getElementById('blackClock').className='clock '+(gameStarted&&turn==='b'?'active':'inactive');
 }
+function updateTurnBanner(){
+  let b=document.getElementById('turnBanner');
+  if(!gameStarted){ b.textContent='⏸️ Press START'; b.className='turn-banner turn-white'; return; }
+  if(gameOver){ b.textContent='🏁 Game Over'; b.className='turn-banner turn-white'; return; }
+  if(mode==='online'){
+    if(game.turn()===myColour){ b.textContent=`⚪⚫ YOUR MOVE - ${game.turn()==='w'?'White':'Black'}`; b.className='turn-banner '+(game.turn()==='w'?'turn-white':'turn-black'); }
+    else { b.textContent=`⏳ Opponent thinking...`; b.className='turn-banner turn-black'; }
+  } else {
+    if(game.turn()==='w'){ b.textContent='⚪ White to move'; b.className='turn-banner turn-white'; } else { b.textContent='⚫ Black to move'; b.className='turn-banner turn-black'; }
+  }
+}
 function startClock(){ stopClock(); clockTimer=setInterval(()=>{ if(!gameStarted||gameOver) return; if(game.turn()==='w') whiteTime--; else blackTime--; if(whiteTime<=0){endByTime('Black');return;} if(blackTime<=0){endByTime('White');return;} updateClockDisplay(); },1000); }
 function stopClock(){ if(clockTimer) clearInterval(clockTimer); }
-function endByTime(w){ gameOver=true;gameStarted=false;stopClock(); document.getElementById('turnInfo').textContent='⏰ Time Out - '+w+' Wins!'; alert('⏰ Time Out!\n\n'+w+' wins on time.'); }
+function endByTime(w){ gameOver=true;gameStarted=false;stopClock(); document.getElementById('turnInfo').textContent='⏰ Time Out - '+w+' Wins!'; alert('⏰ Time Out! '+w+' wins.'); updateTurnBanner(); }
 function render(){
   const boardEl=document.getElementById('board'); boardEl.innerHTML='';
   const board=game.board();
-  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+  // If you are Black in online game, flip board so your pieces at bottom
+  let rows=[0,1,2,3,4,5,6,7], cols=[0,1,2,3,4,5,6,7];
+  if(mode==='online' && myColour==='b'){ rows.reverse(); cols.reverse(); }
+  for(let ri=0;ri<8;ri++) for(let ci=0;ci<8;ci++){
+    let r=rows[ri], c=cols[ci];
     let sq='abcdefgh'[c]+(8-r); let piece=board[r][c];
     let div=document.createElement('div'); div.className='sq '+((r+c)%2===0?'light':'dark');
     if(selected===sq) div.classList.add('sel');
@@ -285,11 +415,14 @@ function render(){
     if(piece){ let map={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'}; let key=piece.color==='w'?piece.type.toUpperCase():piece.type; div.textContent=map[key]||''; div.style.color=piece.color==='w'?'#fff':'#000'; div.style.textShadow=piece.color==='w'?'0 0 3px #000, 0 0 3px #000':'0 0 2px #fff'; }
     div.onclick=()=>clickSquare(sq); boardEl.appendChild(div);
   }
-  updateClockDisplay();
+  updateClockDisplay(); updateTurnBanner();
 }
 function clickSquare(sq){
   if(!gameStarted){alert('⏸️ Press START first!');return;}
-  if(gameOver) return; if(mode==='computer'&&game.turn()==='b') return;
+  if(gameOver) return;
+  if(mode==='computer' && game.turn()==='b') return;
+  // In online mode, you can ONLY move when it's your colour's turn
+  if(mode==='online' && game.turn()!==myColour){ alert('⏳ Wait - Opponent to move'); return; }
   if(selected===sq){selected=null;legalMoves=[];render();return;}
   if(selected){ let m=game.moves({square:selected,verbose:true}).find(x=>x.to===sq); if(m){doMove(selected,sq,'q',false);return;} }
   let piece=game.get(sq);
@@ -302,14 +435,21 @@ function doMove(from,to,promo,isEngine){
   lastMove={from:from,to:to}; moveCount++; selected=null; legalMoves=[];
   let list=document.getElementById('movesList'); if(moveCount===1) list.textContent=''; list.textContent+=(move.color==='w'?Math.ceil(moveCount/2)+'. ':'')+move.san+' ';
   render();
-  if(game.in_checkmate()){gameOver=true;gameStarted=false;stopClock();let winner=game.turn()==='w'?'Black':'White';document.getElementById('turnInfo').textContent='♔ Checkmate! '+winner+' Wins!';setTimeout(()=>alert('♔ Checkmate!\n\n'+winner+' wins!'),300);return;}
-  if(game.in_draw()||game.in_stalemate()||game.in_threefold_repetition()){gameOver=true;gameStarted=false;stopClock();document.getElementById('turnInfo').textContent='🤝 Draw!';setTimeout(()=>alert('🤝 Draw!'),300);return;}
-  document.getElementById('turnInfo').textContent=(game.turn()==='w'?'Your move - White':'Stockfish thinking... Black');
-  updateClockDisplay();
+  if(game.in_checkmate()){
+    gameOver=true;gameStarted=false;stopClock();
+    let winner = game.turn()==='w' ? 'Black' : 'White';
+    let youWin = (mode==='online' && winner===(myColour==='w'?'White':'Black'));
+    document.getElementById('turnInfo').textContent='♔ Checkmate! '+winner+' Wins!';
+    setTimeout(()=>alert(`♔ Checkmate!\n\n${winner} wins!`+(mode==='online'?(youWin?`\n\nYou win K${selStake*2}!`:`\n\nOpponent wins K${selStake*2}`):'')),300);
+    return;
+  }
+  if(game.in_draw()||game.in_stalemate()||game.in_threefold_repetition()){gameOver=true;gameStarted=false;stopClock();document.getElementById('turnInfo').textContent='🤝 Draw! Stake returned.';setTimeout(()=>alert('🤝 Draw! Stake returned.'),300);return;}
+  document.getElementById('turnInfo').textContent = mode==='online' ? (game.turn()===myColour?'Your move':'Opponent to move') : (game.turn()==='w'?'Your move - White':'Stockfish thinking...');
+  updateClockDisplay(); updateTurnBanner();
   if(mode==='computer'&&game.turn()==='b'&&!gameOver&&gameStarted){ setTimeout(()=>{ try{ stockfish.postMessage('position fen '+game.fen()); stockfish.postMessage('go depth 12'); }catch(e){} },400); }
 }
-renderTournaments();
-newGame();
+selectType('rapid'); selectStake(20);
+renderTournaments(); newGame();
 </script>
 </body>
 </html>
