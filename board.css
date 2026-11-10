@@ -100,4 +100,89 @@
   .player-bar{ padding:8px; }
 }
 
+/* ===== FIX: Remove "White to move" - Return Full Board + Players Details ===== */
+
+/* 1. REMOVE the "White to move" text - it was covering board */
+#status,
+#eval,
+#zedMoveTimerText,
+.move-timer-text {
+  display: none !important;
+}
+
+/* 2. REMOVE the timer bar that was pushing board down */
+#zedMoveTimerBar,
+.move-timer-bar,
+.move-timer-text {
+  display: none !important;
+  height: 0 !important;
+  margin: 0 !important;
+  padding: 0 !important;
+}
+
+/* 3. RETURN FULL BOARD - no more squeezed */
+.board-wrap,
+#board,
+#checkersBoard {
+  width: 100% !important;
+  height: auto !important;
+  aspect-ratio: 1 / 1 !important;
+  max-width: 480px !important;
+  margin: 8px auto !important;
+  display: grid !important;
+}
+
+/* 4. RETURN PLAYERS DETAILS - Top = Black, Bottom = White, always visible */
+.player-bar,
+.player-info {
+  display: flex !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+}
+
+.player-bar {
+  width: 100% !important;
+  max-width: 480px !important;
+  margin: 8px auto !important;
+  background: #1f2937 !important;
+  padding: 10px 12px !important;
+  border-radius: 12px !important;
+  justify-content: space-between !important;
+  align-items: center !important;
+}
+
+/* Clock stays - this is the real time, not "White to move" */
+.clock {
+  display: block !important;
+  visibility: visible !important;
+  font-size: 20px !important;
+  font-weight: 900 !important;
+  min-width: 72px !important;
+  text-align: center !important;
+}
+
+/* Moves list - keep it small, below board, not covering */
+.moves {
+  display: block !important;
+  max-height: 60px !important;
+  margin-top: 8px !important;
+}
+
+
+Also, open chess-fix.js > Add this at bottom:
+
+js
+/* FIX: Remove "White to move" text on load */
+window.addEventListener('load', () => {
+  setTimeout(() => {
+    const status = document.getElementById('status');
+    if (status) status.style.display = 'none';
+    const evalEl = document.getElementById('eval');
+    if (evalEl) evalEl.style.display = 'none';
+    const timerText = document.getElementById('zedMoveTimerText');
+    if (timerText) timerText.style.display = 'none';
+    console.log('ZED FIX: White to move removed, board full');
+  }, 500);
+});
+
 
