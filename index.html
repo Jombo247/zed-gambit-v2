@@ -8,7 +8,7 @@
 <script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/stockfish.js/10.0.2/stockfish.js"></script>
 <style>
-body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:80px}
+body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px;padding-bottom:90px}
 .topbar{display:flex;justify-content:space-between;align-items:center;max-width:480px;margin:auto}
 .balance{background:#1f2937;padding:8px 14px;border-radius:20px;font-weight:900}
 .page{display:none;max-width:480px;margin:auto}
@@ -19,8 +19,8 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .btn{width:100%;background:#22c55e;color:#fff;border:0;padding:14px;border-radius:12px;font-weight:900;font-size:16px;cursor:pointer;margin-top:10px}
 .btn-yellow{background:#facc15;color:#000}
 .btn-dark{background:#374151}
+.btn-red{background:#ef4444}
 .player-bar{display:flex;justify-content:space-between;align-items:center;background:#1f2937;padding:10px 12px;border-radius:12px;margin:8px 0;width:100%;box-sizing:border-box}
-.player-bar b{font-size:14px}
 .clock{font-size:20px;font-weight:900;background:#000;padding:6px 10px;border-radius:8px;min-width:72px;text-align:center}
 .clock.active{color:#22c55e;border:2px solid #22c55e}
 .clock.inactive{color:#9ca3af}
@@ -33,6 +33,15 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
 .sq.last{background:#facc15 !important}
 .start-box{background:#1f2937;padding:14px;border-radius:12px;text-align:center;border:2px solid #facc15;margin:10px 0}
 .moves{background:#1f2937;padding:10px;border-radius:10px;min-height:40px;font-size:13px;margin-top:10px;max-height:100px;overflow:auto}
+.tourn-card{background:#1f2937;padding:14px;border-radius:14px;margin:10px 0;border-left:4px solid #facc15}
+.tourn-card b{font-size:16px}
+.badge{display:inline-block;background:#facc15;color:#000;font-size:11px;font-weight:900;padding:2px 8px;border-radius:10px;margin-left:6px}
+.badge-green{background:#22c55e;color:#fff}
+input,select{width:100%;padding:12px;border-radius:10px;border:0;background:#374151;color:#fff;margin:6px 0;box-sizing:border-box;font-size:15px}
+label{font-size:12px;color:#9ca3af}
+.admin-row{background:#1f2937;padding:12px;border-radius:12px;margin:10px 0;border:1px solid #374151}
+.nav{position:fixed;bottom:0;left:0;right:0;background:#1f2937;display:flex;justify-content:space-around;padding:10px 0;border-top:1px solid #374151}
+.nav div{cursor:pointer;text-align:center;font-size:12px}
 </style>
 </head>
 <body>
@@ -42,249 +51,264 @@ body{background:#111827;color:white;font-family:sans-serif;margin:0;padding:10px
   <div class="balance">💰 K<span id="balance">0</span></div>
 </div>
 
-<!-- HOME PAGE -->
+<!-- HOME -->
 <div id="homePage" class="page active">
   <h2 style="text-align:center">Play Chess - Win Real Money</h2>
   <div class="game-grid">
     <div class="card" onclick="openGame('computer')"><div style="font-size:32px">🤖</div><h3>vs Computer</h3><p>Free Practice</p></div>
     <div class="card" onclick="openGame('opponent')"><div style="font-size:32px">👥</div><h3>vs Opponent</h3><p>2 Player</p></div>
-    <div class="card" onclick="alert('Arena coming soon')"><div style="font-size:32px">🏆</div><h3>Arena</h3><p>Win K70</p></div>
-    <div class="card" onclick="alert('Tournament coming soon')"><div style="font-size:32px">👑</div><h3>Tournament</h3><p>Win K500</p></div>
+    <div class="card" onclick="showPage('arenaPage')"><div style="font-size:32px">🏆</div><h3>Arena</h3><p id="arenaHomeText">Win K70</p></div>
+    <div class="card" onclick="showPage('tournamentPage')"><div style="font-size:32px">👑</div><h3>Tournament</h3><p id="tournHomeText">All Rated Types</p></div>
     <div class="card" onclick="openGame('computer')"><div style="font-size:32px">⚡</div><h3>Blitz</h3><p>3 Min - Fast</p></div>
     <div class="card" onclick="openGame('computer')"><div style="font-size:32px">⏱️</div><h3>Rapid</h3><p>10 Min</p></div>
     <div class="card" onclick="alert('Puzzles coming soon')"><div style="font-size:32px">🧩</div><h3>Puzzles</h3><p>Solve & Win</p></div>
     <div class="card" onclick="alert('Leaderboard coming soon')"><div style="font-size:32px">📊</div><h3>Leaderboard</h3><p>Top Players</p></div>
   </div>
   <button class="btn btn-yellow" onclick="openGame('computer')">▶️ PLAY NOW - FREE</button>
+  <button class="btn btn-dark" onclick="showPage('tournamentPage')">👑 VIEW TOURNAMENTS</button>
+</div>
+
+<!-- ARENA PAGE -->
+<div id="arenaPage" class="page">
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <h2>🏆 Arena - Rated Games</h2>
+  <p style="color:#9ca3af;font-size:13px">Rated Arena games. Win = Rating up + Prize. Stakes set by Admin.</p>
+  <div id="arenaList"></div>
+</div>
+
+<!-- TOURNAMENT PAGE - MUST INCLUDE ALL TYPES -->
+<div id="tournamentPage" class="page">
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <h2>👑 Tournament - All Types</h2>
+  <p style="color:#9ca3af;font-size:13px">All Arena Rated Types in one Tournament. Standard, Rapid, Blitz, Bullet. Stakes controlled by Admin Dashboard.</p>
+  <div style="background:#facc15;color:#000;padding:10px;border-radius:10px;font-weight:900;text-align:center" id="tournBanner">🏆 WEEKLY TOURNAMENT LIVE</div>
+  <div id="tournamentList"></div>
+  <div style="background:#1f2937;padding:12px;border-radius:12px;margin-top:12px;font-size:13px">
+    <b>How Tournament Works:</b><br>
+    1. Pick a type below<br>
+    2. Pay entry fee (Admin set)<br>
+    3. Play rated game - Win = points<br>
+    4. Top players share prize pool
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD - STAKES CONTROL -->
+<div id="adminPage" class="page">
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <h2>⚙️ Admin Dashboard</h2>
+  <p style="color:#9ca3af;font-size:13px">Only Admin. Change stakes here - it updates Tournament + Arena instantly for all players.</p>
+
+  <div id="adminLoginBox" style="background:#1f2937;padding:14px;border-radius:12px">
+    <label>Admin PIN (default 1234)</label>
+    <input type="password" id="adminPin" placeholder="Enter PIN">
+    <button class="btn btn-yellow" onclick="adminLogin()">🔓 Unlock Dashboard</button>
+  </div>
+
+  <div id="adminControls" style="display:none">
+    <div style="background:#22c55e;color:#fff;padding:10px;border-radius:10px;text-align:center;font-weight:900">✅ Admin Unlocked - Stakes Editable</div>
+    <label>Tournament Status</label>
+    <select id="adm_tournStatus"><option>LIVE</option><option>UPCOMING</option><option>CLOSED</option></select>
+    <label>Tournament Name</label>
+    <input id="adm_tournName" value="Weekly Zed Gambit Championship">
+    <div id="adminStakesList"></div>
+    <button class="btn" onclick="saveAdmin()">💾 SAVE ALL STAKES</button>
+    <button class="btn btn-red" onclick="resetAdmin()">↩️ Reset to Default</button>
+    <p style="font-size:11px;color:#9ca3af">Saved in this device. For live site, connect this to your backend / Firebase later - same fields.</p>
+  </div>
 </div>
 
 <!-- GAME PAGE -->
 <div id="gamePage" class="page">
-  <button class="btn btn-dark" onclick="goHome()">← Back Home</button>
-
-  <!-- TOP PLAYER = BLACK / OPPONENT -->
-  <div class="player-bar">
-    <div><b id="topName">🤖 Stockfish</b><div style="font-size:11px;color:#9ca3af" id="topSub">Black • Opponent</div></div>
-    <div class="clock inactive" id="blackClock">10:00</div>
-  </div>
-
-  <!-- START BOX - Clocks PAUSED until START -->
+  <button class="btn btn-dark" onclick="showPage('homePage')">← Back Home</button>
+  <div class="player-bar"><div><b id="topName">🤖 Stockfish</b><div style="font-size:11px;color:#9ca3af" id="topSub">Black • Opponent</div></div><div class="clock inactive" id="blackClock">10:00</div></div>
   <div id="startBox" class="start-box">
-    <div style="font-weight:900;font-size:17px">♟️ Game Ready - NOT Started</div>
-    <div style="font-size:12px;margin:6px 0;color:#d1d5db">Clocks PAUSED. Stockfish is waiting.<br>White: 10:00 | Black: 10:00 | +5s per move</div>
+    <div style="font-weight:900;font-size:17px" id="gameTitle">♟️ Game Ready - NOT Started</div>
+    <div style="font-size:12px;margin:6px 0;color:#d1d5db" id="gameInfo">Clocks PAUSED. Stockfish is waiting.<br>White: 10:00 | Black: 10:00 | +5s per move</div>
     <button class="btn" onclick="startGame()">▶️ START GAME</button>
   </div>
-
-  <!-- FULL BOARD -->
   <div id="board"></div>
-
-  <!-- BOTTOM PLAYER = WHITE / YOU -->
-  <div class="player-bar">
-    <div><b id="bottomName">👤 You</b><div style="font-size:11px;color:#9ca3af">White • You</div></div>
-    <div class="clock inactive" id="whiteClock">10:00</div>
-  </div>
-
+  <div class="player-bar"><div><b id="bottomName">👤 You</b><div style="font-size:11px;color:#9ca3af">White • You</div></div><div class="clock inactive" id="whiteClock">10:00</div></div>
   <div style="text-align:center;font-size:12px;color:#9ca3af;margin-top:6px" id="turnInfo">Press START to play. White moves first.</div>
   <div class="moves" id="movesList">Moves will appear here...</div>
   <button class="btn btn-dark" onclick="newGame()">🔄 New Game</button>
   <button class="btn btn-yellow" onclick="resignGame()">🏳️ Resign</button>
 </div>
 
+<!-- BOTTOM NAV -->
+<div class="nav">
+  <div onclick="showPage('homePage')">🏠<br>Home</div>
+  <div onclick="showPage('arenaPage')">🏆<br>Arena</div>
+  <div onclick="showPage('tournamentPage')">👑<br>Tournament</div>
+  <div onclick="showPage('adminPage')">⚙️<br>Admin</div>
+</div>
+
 <script>
-let game = new Chess();
-let selected = null;
-let legalMoves = [];
-let gameOver = false;
-let thinking = false;
-let gameStarted = false;
-let whiteTime = 600;
-let blackTime = 600;
-let clockTimer = null;
-let lastMove = null;
-let moveCount = 0;
-let stockfish = null;
-let mode = 'computer';
+// ===== ADMIN CONTROLLED STAKES - DEFAULTS =====
+let DEFAULT_STAKES = {
+  tournName: "Weekly Zed Gambit Championship",
+  tournStatus: "LIVE",
+  types: [
+    {id:'standard', name:'Standard', icon:'♟️', time:'15+10', desc:'Standard Rated • 15 min + 10s', entry:20, prize:200, rated:true},
+    {id:'rapid', name:'Rapid', icon:'⏱️', time:'10+5', desc:'Rapid Rated • 10 min + 5s', entry:10, prize:100, rated:true},
+    {id:'blitz', name:'Blitz', icon:'⚡', time:'3+2', desc:'Blitz Rated • 3 min + 2s', entry:5, prize:70, rated:true},
+    {id:'bullet', name:'Bullet', icon:'🚀', time:'1+0', desc:'Bullet Rated • 1 min', entry:5, prize:50, rated:true},
+    {id:'arena', name:'Arena Rated', icon:'🏆', time:'10+5', desc:'Arena Rated • Continuous Arena', entry:10, prize:150, rated:true},
+  ]
+};
+let STAKES = JSON.parse(localStorage.getItem('zed_stakes') || JSON.stringify(DEFAULT_STAKES));
 
-try {
-  stockfish = STOCKFISH();
-  stockfish.onmessage = function(e) {
-    if (!gameStarted || gameOver) return;
-    if (typeof e === 'string' && e.indexOf('bestmove') === 0) {
-      let parts = e.split(' ');
-      let mv = parts[1];
-      if (mv && mv !== '(none)') {
-        let from = mv.substring(0,2);
-        let to = mv.substring(2,4);
-        let promo = mv.length > 4 ? mv.substring(4,5) : 'q';
-        doMove(from, to, promo, true);
-      }
-      thinking = false;
-    }
-  };
-} catch(err){ console.log('Stockfish load error', err); }
-
-function openGame(m){
-  mode = m;
-  document.getElementById('homePage').classList.remove('active');
-  document.getElementById('gamePage').classList.add('active');
-  if(m === 'opponent'){
-    document.getElementById('topName').textContent = '👥 Opponent';
-    document.getElementById('topSub').textContent = 'Black • Opponent';
-  } else {
-    document.getElementById('topName').textContent = '🤖 Stockfish';
-    document.getElementById('topSub').textContent = 'Black • Computer';
+function saveStakes(){ localStorage.setItem('zed_stakes', JSON.stringify(STAKES)); renderTournaments(); }
+function renderTournaments(){
+  let html = '';
+  STAKES.types.forEach(t=>{
+    html += `<div class="tourn-card">
+      <b>${t.icon} ${t.name} <span class="badge">${t.time}</span> ${t.rated?'<span class="badge badge-green">RATED</span>':''}</b>
+      <div style="font-size:12px;color:#d1d5db;margin:6px 0">${t.desc}</div>
+      <div style="display:flex;gap:8px;font-size:13px"><div style="background:#374151;padding:6px 10px;border-radius:8px">Entry: <b>K${t.entry}</b></div><div style="background:#facc15;color:#000;padding:6px 10px;border-radius:8px">Prize: <b>K${t.prize}</b></div><div style="background:#374151;padding:6px 10px;border-radius:8px">Status: <b>${STAKES.tournStatus}</b></div></div>
+      <button class="btn btn-yellow" onclick="joinTournament('${t.id}')">Join ${t.name} - Pay K${t.entry}</button>
+    </div>`;
+  });
+  document.getElementById('tournamentList').innerHTML = html;
+  document.getElementById('arenaList').innerHTML = html;
+  document.getElementById('tournBanner').textContent = '🏆 ' + STAKES.tournName + ' - ' + STAKES.tournStatus;
+  document.getElementById('tournHomeText').textContent = 'Entry from K' + Math.min(...STAKES.types.map(x=>x.entry)) + ' - Win up to K' + Math.max(...STAKES.types.map(x=>x.prize));
+  document.getElementById('arenaHomeText').textContent = 'Win up to K' + Math.max(...STAKES.types.map(x=>x.prize));
+  renderAdminList();
+}
+function joinTournament(id){
+  let t = STAKES.types.find(x=>x.id===id);
+  if(!t) return;
+  if(confirm(`Join ${t.name} Tournament?\n\nType: ${t.name} (${t.time}) - RATED\nEntry: K${t.entry}\nPrize: K${t.prize}\n\nPayment via MTN / Airtel / Zamtel Kwacha (Instacom) coming next.`)){
+    openGameWithType(t);
   }
+}
+function openGameWithType(t){
+  // Map type to clock
+  let mins = t.id==='bullet'?1 : t.id==='blitz'?3 : t.id==='rapid'||t.id==='arena'?10 : 15;
+  let inc = t.id==='standard'?10 : t.id==='bullet'?0 : t.id==='blitz'?2 : 5;
+  CURRENT_TYPE = t; CURRENT_MINS = mins; CURRENT_INC = inc;
+  showPage('gamePage');
+  document.getElementById('gameTitle').textContent = `♟️ ${t.name} Tournament - NOT Started`;
+  document.getElementById('gameInfo').innerHTML = `Rated ${t.name} • ${t.time} • Entry K${t.entry} • Prize K${t.prize}<br>Clocks PAUSED.`;
   newGame();
 }
-function goHome(){
-  stopClock();
-  document.getElementById('gamePage').classList.remove('active');
-  document.getElementById('homePage').classList.add('active');
+function renderAdminList(){
+  let c = document.getElementById('adminStakesList');
+  if(!c) return;
+  let html = '';
+  STAKES.types.forEach((t,i)=>{
+    html += `<div class="admin-row">
+      <b>${t.icon} ${t.name} - ${t.time} - RATED</b>
+      <label>Entry Fee (K)</label><input type="number" id="entry_${i}" value="${t.entry}">
+      <label>Prize Pool (K)</label><input type="number" id="prize_${i}" value="${t.prize}">
+      <label>Time Control (e.g 15+10)</label><input id="time_${i}" value="${t.time}">
+    </div>`;
+  });
+  c.innerHTML = html;
+  document.getElementById('adm_tournName').value = STAKES.tournName;
+  document.getElementById('adm_tournStatus').value = STAKES.tournStatus;
+}
+function adminLogin(){
+  let pin = document.getElementById('adminPin').value;
+  if(pin==='1234'){
+    document.getElementById('adminLoginBox').style.display='none';
+    document.getElementById('adminControls').style.display='block';
+    renderAdminList();
+  } else alert('Wrong PIN. Default is 1234. Change it in code later.');
+}
+function saveAdmin(){
+  STAKES.tournName = document.getElementById('adm_tournName').value;
+  STAKES.tournStatus = document.getElementById('adm_tournStatus').value;
+  STAKES.types.forEach((t,i)=>{
+    t.entry = Number(document.getElementById('entry_'+i).value);
+    t.prize = Number(document.getElementById('prize_'+i).value);
+    t.time = document.getElementById('time_'+i).value;
+  });
+  saveStakes();
+  alert('✅ Stakes Saved!\n\nTournament + Arena now show new Entry / Prize for all players.');
+}
+function resetAdmin(){
+  if(confirm('Reset stakes to default?')){ STAKES = JSON.parse(JSON.stringify(DEFAULT_STAKES)); saveStakes(); alert('Reset done'); }
+}
+function showPage(id){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  window.scrollTo(0,0);
 }
 
+// ===== GAME ENGINE =====
+let game = new Chess();
+let selected=null, legalMoves=[], gameOver=false, gameStarted=false;
+let whiteTime=600, blackTime=600, clockTimer=null, lastMove=null, moveCount=0, stockfish=null, mode='computer';
+let CURRENT_TYPE=null, CURRENT_MINS=10, CURRENT_INC=5;
+try{
+  stockfish = STOCKFISH();
+  stockfish.onmessage = function(e){
+    if(!gameStarted||gameOver) return;
+    if(typeof e==='string' && e.indexOf('bestmove')===0){
+      let p=e.split(' '); let mv=p[1];
+      if(mv && mv!=='(none)') doMove(mv.substring(0,2), mv.substring(2,4), mv.length>4?mv.substring(4,5):'q', true);
+    }
+  };
+}catch(e){}
+function openGame(m){ mode=m; showPage('gamePage'); CURRENT_TYPE=null; CURRENT_MINS=10; CURRENT_INC=5; newGame(); }
 function newGame(){
-  game = new Chess();
-  selected = null; legalMoves = []; gameOver = false; thinking = false;
-  gameStarted = false; whiteTime = 600; blackTime = 600; lastMove = null; moveCount = 0;
-  stopClock();
-  document.getElementById('startBox').style.display = 'block';
-  document.getElementById('movesList').textContent = 'Moves will appear here...';
-  document.getElementById('turnInfo').textContent = 'Press START to play. White moves first.';
-  updateClockDisplay();
-  render();
+  game=new Chess(); selected=null; legalMoves=[]; gameOver=false; gameStarted=false;
+  whiteTime=CURRENT_MINS*60; blackTime=CURRENT_MINS*60; lastMove=null; moveCount=0; stopClock();
+  document.getElementById('startBox').style.display='block';
+  document.getElementById('movesList').textContent='Moves will appear here...';
+  document.getElementById('turnInfo').textContent='Press START to play. White moves first.';
+  updateClockDisplay(); render();
 }
-
-function startGame(){
-  if (gameStarted) return;
-  gameStarted = true;
-  document.getElementById('startBox').style.display = 'none';
-  document.getElementById('turnInfo').textContent = 'Game Started! Your move - White.';
-  startClock();
-}
-
-function resignGame(){
-  if (!gameStarted) { alert('Game not started yet'); return; }
-  if (confirm('Resign this game?')) {
-    gameOver = true; gameStarted = false; stopClock();
-    alert('You resigned. Stockfish wins.');
-    document.getElementById('turnInfo').textContent = 'Game Over - You Resigned';
-  }
-}
-
-function formatTime(s){
-  let m = Math.floor(s/60); let sec = s%60;
-  return m + ':' + (sec < 10 ? '0'+sec : sec);
-}
+function startGame(){ if(gameStarted) return; gameStarted=true; document.getElementById('startBox').style.display='none'; document.getElementById('turnInfo').textContent='Game Started! Your move - White.'; startClock(); }
+function resignGame(){ if(!gameStarted){alert('Game not started yet');return;} if(confirm('Resign?')){gameOver=true;gameStarted=false;stopClock();alert('You resigned. Stockfish wins.');} }
+function formatTime(s){let m=Math.floor(s/60);let sec=s%60;return m+':'+(sec<10?'0'+sec:sec);}
 function updateClockDisplay(){
-  document.getElementById('whiteClock').textContent = formatTime(Math.max(0,whiteTime));
-  document.getElementById('blackClock').textContent = formatTime(Math.max(0,blackTime));
-  let turn = game.turn();
-  document.getElementById('whiteClock').className = 'clock ' + (gameStarted && turn==='w' ? 'active' : 'inactive');
-  document.getElementById('blackClock').className = 'clock ' + (gameStarted && turn==='b' ? 'active' : 'inactive');
+  document.getElementById('whiteClock').textContent=formatTime(Math.max(0,whiteTime));
+  document.getElementById('blackClock').textContent=formatTime(Math.max(0,blackTime));
+  let turn=game.turn();
+  document.getElementById('whiteClock').className='clock '+(gameStarted&&turn==='w'?'active':'inactive');
+  document.getElementById('blackClock').className='clock '+(gameStarted&&turn==='b'?'active':'inactive');
 }
-function startClock(){
-  stopClock();
-  clockTimer = setInterval(() => {
-    if (!gameStarted || gameOver) return;
-    if (game.turn() === 'w') whiteTime--; else blackTime--;
-    if (whiteTime <= 0) { endByTime('Black'); return; }
-    if (blackTime <= 0) { endByTime('White'); return; }
-    updateClockDisplay();
-  }, 1000);
-}
+function startClock(){ stopClock(); clockTimer=setInterval(()=>{ if(!gameStarted||gameOver) return; if(game.turn()==='w') whiteTime--; else blackTime--; if(whiteTime<=0){endByTime('Black');return;} if(blackTime<=0){endByTime('White');return;} updateClockDisplay(); },1000); }
 function stopClock(){ if(clockTimer) clearInterval(clockTimer); }
-function endByTime(winner){
-  gameOver = true; gameStarted = false; stopClock();
-  document.getElementById('turnInfo').textContent = '⏰ Time Out - ' + winner + ' Wins!';
-  alert('⏰ Time Out!\n\n' + winner + ' wins on time.');
-}
-
+function endByTime(w){ gameOver=true;gameStarted=false;stopClock(); document.getElementById('turnInfo').textContent='⏰ Time Out - '+w+' Wins!'; alert('⏰ Time Out!\n\n'+w+' wins on time.'); }
 function render(){
-  const boardEl = document.getElementById('board');
-  boardEl.innerHTML = '';
-  const board = game.board();
-  for(let r=0;r<8;r++){
-    for(let c=0;c<8;c++){
-      let sq = 'abcdefgh'[c] + (8-r);
-      let piece = board[r][c];
-      let div = document.createElement('div');
-      div.className = 'sq ' + ((r+c)%2===0 ? 'light' : 'dark');
-      if (selected === sq) div.classList.add('sel');
-      if (lastMove && (lastMove.from===sq || lastMove.to===sq)) div.classList.add('last');
-      if (legalMoves.includes(sq)) div.classList.add('hint');
-      if (piece) {
-        let map = {p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'};
-        let key = piece.color==='w' ? piece.type.toUpperCase() : piece.type;
-        div.textContent = map[key] || '';
-        div.style.color = piece.color==='w' ? '#fff' : '#000';
-        div.style.textShadow = piece.color==='w' ? '0 0 3px #000, 0 0 3px #000' : '0 0 2px #fff';
-      }
-      div.onclick = () => clickSquare(sq);
-      boardEl.appendChild(div);
-    }
+  const boardEl=document.getElementById('board'); boardEl.innerHTML='';
+  const board=game.board();
+  for(let r=0;r<8;r++) for(let c=0;c<8;c++){
+    let sq='abcdefgh'[c]+(8-r); let piece=board[r][c];
+    let div=document.createElement('div'); div.className='sq '+((r+c)%2===0?'light':'dark');
+    if(selected===sq) div.classList.add('sel');
+    if(lastMove&&(lastMove.from===sq||lastMove.to===sq)) div.classList.add('last');
+    if(legalMoves.includes(sq)) div.classList.add('hint');
+    if(piece){ let map={p:'♟',n:'♞',b:'♝',r:'♜',q:'♛',k:'♚',P:'♙',N:'♘',B:'♗',R:'♖',Q:'♕',K:'♔'}; let key=piece.color==='w'?piece.type.toUpperCase():piece.type; div.textContent=map[key]||''; div.style.color=piece.color==='w'?'#fff':'#000'; div.style.textShadow=piece.color==='w'?'0 0 3px #000, 0 0 3px #000':'0 0 2px #fff'; }
+    div.onclick=()=>clickSquare(sq); boardEl.appendChild(div);
   }
   updateClockDisplay();
 }
-
 function clickSquare(sq){
-  if (!gameStarted) { alert('⏸️ Press START first!\n\nGame not started. Clocks are PAUSED.'); return; }
-  if (gameOver) return;
-  if (mode === 'computer' && game.turn() === 'b') return;
-  if (selected === sq) { selected=null; legalMoves=[]; render(); return; }
-  if (selected) {
-    let m = game.moves({square:selected, verbose:true}).find(x=>x.to===sq);
-    if (m) {
-      doMove(selected, sq, 'q', false);
-      return;
-    }
-  }
-  let piece = game.get(sq);
-  if (piece && piece.color === game.turn()) {
-    selected = sq;
-    legalMoves = game.moves({square:sq, verbose:true}).map(x=>x.to);
-  } else { selected=null; legalMoves=[]; }
+  if(!gameStarted){alert('⏸️ Press START first!');return;}
+  if(gameOver) return; if(mode==='computer'&&game.turn()==='b') return;
+  if(selected===sq){selected=null;legalMoves=[];render();return;}
+  if(selected){ let m=game.moves({square:selected,verbose:true}).find(x=>x.to===sq); if(m){doMove(selected,sq,'q',false);return;} }
+  let piece=game.get(sq);
+  if(piece&&piece.color===game.turn()){selected=sq;legalMoves=game.moves({square:sq,verbose:true}).map(x=>x.to);} else {selected=null;legalMoves=[];}
   render();
 }
-
-function doMove(from, to, promo, isEngine){
-  let move = game.move({from:from, to:to, promotion:promo || 'q'});
-  if (!move) return;
-  if (move.color === 'w') whiteTime += 5; else blackTime += 5;
-  lastMove = {from:from, to:to};
-  moveCount++;
-  selected=null; legalMoves=[];
-  let list = document.getElementById('movesList');
-  if (moveCount===1) list.textContent='';
-  list.textContent += (move.color==='w' ? Math.ceil(moveCount/2)+'. ' : '') + move.san + ' ';
+function doMove(from,to,promo,isEngine){
+  let move=game.move({from:from,to:to,promotion:promo||'q'}); if(!move) return;
+  if(move.color==='w') whiteTime+=CURRENT_INC; else blackTime+=CURRENT_INC;
+  lastMove={from:from,to:to}; moveCount++; selected=null; legalMoves=[];
+  let list=document.getElementById('movesList'); if(moveCount===1) list.textContent=''; list.textContent+=(move.color==='w'?Math.ceil(moveCount/2)+'. ':'')+move.san+' ';
   render();
-
-  if (game.in_checkmate()) {
-    gameOver=true; gameStarted=false; stopClock();
-    let winner = game.turn()==='w' ? 'Black' : 'White';
-    document.getElementById('turnInfo').textContent = '♔ Checkmate! ' + winner + ' Wins!';
-    setTimeout(()=>alert('♔ Checkmate!\n\n'+winner+' wins!'), 300);
-    return;
-  }
-  if (game.in_draw() || game.in_stalemate() || game.in_threefold_repetition()) {
-    gameOver=true; gameStarted=false; stopClock();
-    document.getElementById('turnInfo').textContent = '🤝 Draw!';
-    setTimeout(()=>alert('🤝 Draw!'), 300);
-    return;
-  }
-  document.getElementById('turnInfo').textContent = (game.turn()==='w' ? 'Your move - White' : 'Stockfish thinking... Black');
+  if(game.in_checkmate()){gameOver=true;gameStarted=false;stopClock();let winner=game.turn()==='w'?'Black':'White';document.getElementById('turnInfo').textContent='♔ Checkmate! '+winner+' Wins!';setTimeout(()=>alert('♔ Checkmate!\n\n'+winner+' wins!'),300);return;}
+  if(game.in_draw()||game.in_stalemate()||game.in_threefold_repetition()){gameOver=true;gameStarted=false;stopClock();document.getElementById('turnInfo').textContent='🤝 Draw!';setTimeout(()=>alert('🤝 Draw!'),300);return;}
+  document.getElementById('turnInfo').textContent=(game.turn()==='w'?'Your move - White':'Stockfish thinking... Black');
   updateClockDisplay();
-
-  if (mode === 'computer' && game.turn() === 'b' && !gameOver && gameStarted) {
-    thinking = true;
-    setTimeout(() => {
-      try {
-        stockfish.postMessage('position fen ' + game.fen());
-        stockfish.postMessage('go depth 12');
-      } catch(e){ thinking=false; }
-    }, 400);
-  }
+  if(mode==='computer'&&game.turn()==='b'&&!gameOver&&gameStarted){ setTimeout(()=>{ try{ stockfish.postMessage('position fen '+game.fen()); stockfish.postMessage('go depth 12'); }catch(e){} },400); }
 }
-
+renderTournaments();
 newGame();
 </script>
 </body>
