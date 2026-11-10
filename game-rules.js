@@ -1,43 +1,49 @@
-/* ===== ZED GAMBIT - GENERAL RULE: 20 SECONDS PER MOVE ===== */
-/* Rule: White has 20s to make FIRST move. Every move after: 20s. Fail = Resign / Lose. */
-/* Works for Chess, Checkers, Ludo. No need to edit index.html. */
+
+/* ===== ZED GAMBIT - GENERAL RULE: OPTION A - 30s + 5s FOR ALL GAMES ===== */
+/* This file is the LAW for all games. index.html stays untouched. */
+/* Rule: 30 seconds per move + 5 seconds bonus every time you move */
 
 const ZED_RULES = {
-  FIRST_MOVE_SECONDS: 20,
-  MOVE_SECONDS: 20,
+  FIRST_MOVE_SECONDS: 30,
+  MOVE_SECONDS: 30,
+  BONUS_SECONDS: 5,
+  WARNINGS_BEFORE_RESIGN: 1, // 1 warning, then resign on 2nd timeout
   enabled: true
 };
 
-let zedMoveTimeLeft = 20;
+let zedMoveTimeLeft = 30;
 let zedMoveTimer = null;
 let zedMoveCount = 0; // 0 = first move not yet made
-let zedCurrentTurn = 'w'; // 'w' or 'b'
+let zedCurrentTurn = 'w';
+let zedWarnings = { w: 0, b: 0 };
+let zedBonusBank = { w: 0, b: 0 };
 
-function zedStartMoveTimer(onTimeout) {
-  // Stop old timer
+function zedStartMoveTimer() {
   if (zedMoveTimer) clearInterval(zedMoveTimer);
-  zedMoveTimeLeft = ZED_RULES.MOVE_SECONDS;
 
-  // Show UI - create if not exists
+  // 30s + bonus you earned from fast moves
+  zedMoveTimeLeft = ZED_RULES.MOVE_SECONDS + zedBonusBank[zedCurrentTurn];
+  if (zedMoveTimeLeft > 45) zedMoveTimeLeft = 45; // max cap, so no one stacks forever
+
   let bar = document.getElementById('zedMoveTimerBar');
   if (!bar) {
     bar = document.createElement('div');
     bar.id = 'zedMoveTimerBar';
     bar.innerHTML = `
-      <div class="move-timer-text" id="zedMoveTimerText">⏱️ White to move - 20s to play or you resign</div>
+      <div class="move-timer-text" id="zedMoveTimerText">⏱️ White to move - 30s</div>
       <div class="move-timer-bar"><div class="move-timer-fill" id="zedMoveTimerFill"></div></div>
+      <div style="text-align:center;font-size:11px;opacity:.7;margin-top:2px" id="zedBonusText">Bonus Bank: White +0s | Black +0s</div>
     `;
-    // Insert bar just above board
     const board = document.getElementById('board') || document.getElementById('checkersBoard');
     if (board) board.parentNode.insertBefore(bar, board);
   }
 
   const textEl = document.getElementById('zedMoveTimerText');
   const fillEl = document.getElementById('zedMoveTimerFill');
+  const bonusEl = document.getElementById('zedBonusText');
 
-  function tick() {
-    zedMoveTimeLeft--;
-    const pct = (zedMoveTimeLeft / 20) * 100;
+  function updateUI() {
+    const pct = (zedMoveTimeLeft / 45) * 100;
     if (fillEl) {
       fillEl.style.width = pct + '%';
       fillEl.classList.toggle('danger', zedMoveTimeLeft <= 5);
@@ -45,68 +51,77 @@ function zedStartMoveTimer(onTimeout) {
     if (textEl) {
       const who = zedCurrentTurn === 'w' ? 'White' : 'Black';
       const isFirst = zedMoveCount === 0 ? ' - FIRST MOVE' : '';
-      textEl.textContent = `⏱️ ${who} to move${isFirst} - ${zedMoveTimeLeft}s left or you RESIGN`;
+      textEl.textContent = `⏱️ ${who} to move${isFirst} - ${zedMoveTimeLeft}s left`;
       textEl.style.color = zedMoveTimeLeft <= 5 ? '#ef4444' : '#facc15';
+      if (zedMoveTimeLeft <= 5) textEl.textContent += ` ⚠️ MOVE NOW OR WARNING!`;
     }
-    if (zedMoveTimeLeft <= 0) {
-      clearInterval(zedMoveTimer);
-      zedDeclareResignByTimeout();
-      if (onTimeout) onTimeout();
+    if (bonusEl) {
+      bonusEl.textContent = `Bonus Bank: White +${zedBonusBank.w}s | Black +${zedBonusBank.b}s • +5s every fast move`;
     }
   }
 
-  // Initial display
-  if (textEl) {
-    const who = zedCurrentTurn === 'w' ? 'White' : 'Black';
-    textEl.textContent = `⏱️ ${who} to move - 20s to play or you resign`;
-  }
-  if (fillEl) fillEl.style.width = '100%';
-  zedMoveTimer = setInterval(tick, 1000);
+  updateUI();
+  zedMoveTimer = setInterval(() => {
+    zedMoveTimeLeft--;
+    updateUI();
+    if (zedMoveTimeLeft <= 0) {
+      clearInterval(zedMoveTimer);
+      zedOnTimeout();
+    }
+  }, 1000);
 }
 
 function zedOnMoveMade(nextTurn) {
-  // Call this AFTER every successful move
+  // Player who just moved gets +5s bonus for next time
+  const justMoved = zedCurrentTurn;
+  zedBonusBank[justMoved] += ZED_RULES.BONUS_SECONDS;
+  if (zedBonusBank[justMoved] > 15) zedBonusBank[justMoved] = 15; // cap bonus at 15s
+
   zedMoveCount++;
-  zedCurrentTurn = nextTurn; // 'w' or 'b'
+  zedCurrentTurn = nextTurn;
   zedStartMoveTimer();
 }
 
-function zedDeclareResignByTimeout() {
+function zedOnTimeout() {
   const loser = zedCurrentTurn === 'w' ? 'White' : 'Black';
   const winner = zedCurrentTurn === 'w' ? 'Black' : 'White';
-  const isFirst = zedMoveCount === 0;
+  zedWarnings[zedCurrentTurn]++;
 
+  // FIRST TIMEOUT = WARNING ONLY, NOT RESIGN
+  if (zedWarnings[zedCurrentTurn] <= ZED_RULES.WARNINGS_BEFORE_RESIGN) {
+    alert(`⚠️ WARNING - ${loser}!\n\nYou ran out of 30 seconds.\n\nThis is your 1 warning. Next timeout = RESIGN.\n\nYou get 30 seconds again - MOVE NOW!`);
+    // Give them another 30s, reset bonus
+    zedBonusBank[zedCurrentTurn] = 0;
+    zedStartMoveTimer();
+    return;
+  }
+
+  // SECOND TIMEOUT = RESIGN
+  const isFirst = zedMoveCount === 0;
   let msg = '';
   if (isFirst) {
-    msg = `⏰ TIME UP!\n\nWhite did not make first move in 20 seconds.\n\nWhite is declared RESIGN.\n🏆 Black Wins!`;
+    msg = `⏰ TIME UP - 2nd TIME!\n\nWhite did not make first move in 30 seconds twice.\n\nWhite is declared RESIGN.\n🏆 Black Wins!`;
   } else {
-    msg = `⏰ TIME UP!\n\n${loser} did not move in 20 seconds.\n\n${loser} is declared RESIGN.\n🏆 ${winner} Wins!`;
+    msg = `⏰ TIME UP - 2nd TIME!\n\n${loser} did not move in 30 seconds twice.\n\n${loser} is declared RESIGN.\n🏆 ${winner} Wins!`;
   }
   alert(msg);
-
-  // Stop game - your existing gameOver flag
   if (typeof gameOver !== 'undefined') gameOver = true;
   if (typeof timer !== 'undefined' && timer) clearInterval(timer);
   if (zedMoveTimer) clearInterval(zedMoveTimer);
-
-  // Update status text if exists
   const status = document.getElementById('status');
   if (status) status.textContent = `⏰ ${loser} Resigned on Time - ${winner} Wins!`;
-
-  // If stake game, winner gets prize - call your existing logic
-  if (typeof currentPrize !== 'undefined' && currentPrize > 0) {
-    // White lost on time = Black wins, etc.
-    // You handle prize in index.html - this just notifies
-    console.log('ZED RULE: Timeout resign, winner:', winner);
-  }
 }
 
 function zedResetTimerForNewGame() {
   zedMoveCount = 0;
   zedCurrentTurn = 'w';
+  zedWarnings = { w: 0, b: 0 };
+  zedBonusBank = { w: 0, b: 0 };
   zedStartMoveTimer();
 }
 
 function zedStopTimer() {
   if (zedMoveTimer) clearInterval(zedMoveTimer);
 }
+
+
