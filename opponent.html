@@ -1,0 +1,156 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Zed Gambit - Find Opponent</title>
+<link rel="stylesheet" href="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://unpkg.com/@chrisoakman/chessboardjs@1.0.0/dist/chessboard-1.0.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/chess.js/0.10.3/chess.min.js"></script>
+<style>
+*{box-sizing:border-box} body{margin:0;font-family:system-ui;background:#0f1115;color:#fff;padding:16px}
+.top{display:flex;justify-content:space-between;align-items:center}
+.logo{font-weight:900;font-size:22px} .logo span{color:#f5c542}
+.card{background:#1a1e26;border-radius:16px;padding:16px;margin-top:14px}
+.badge{font-size:12px;padding:6px 10px;border-radius:999px;background:#2a2f3a}
+.badge.green{background:#1a7a3a} .badge.red{background:#a83232}
+button{width:100%;padding:14px;border:0;border-radius:12px;font-weight:800;font-size:16px;cursor:pointer}
+.btn-yellow{background:#f5c542;color:#000} .btn-dark{background:#2a2f3a;color:#fff;margin-top:8px}
+#board{width:100%;max-width:420px;margin:12px auto}
+.status{text-align:center;margin:8px 0;font-weight:700}
+.moves{font-size:13px;color:#ccc;min-height:20px;text-align:center}
+input{width:100%;padding:12px;border-radius:10px;border:1px solid #333;background:#111;color:#fff;margin-bottom:10px}
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="logo">ZED <span>GAMBIT</span></div>
+  <div id="fbBadge" class="badge red">🔴 Firebase: Checking...</div>
+</div>
+
+<div class="card">
+  <h3 style="margin:0 0 8px">Play Online - Rapid</h3>
+  <p style="color:#aaa;margin:0 0 12px;font-size:14px">K20 • 20 min • Find a real opponent in Zambia</p>
+  <input id="playerName" placeholder="Your name e.g. Themba" value="Themba">
+  <button class="btn-yellow" id="findBtn" onclick="findOpponent()">🔍 Find Opponent - Rapid K20</button>
+  <button class="btn-dark" onclick="cancelSearch()">Cancel Search</button>
+  <div class="status" id="status">Ready to play</div>
+  <div class="moves" id="roomInfo"></div>
+</div>
+
+<div class="card">
+  <div style="display:flex;justify-content:space-between"><b id="whiteLabel">You</b><b id="turnLabel">White to move</b><b id="blackLabel">Opponent</b></div>
+  <div id="board"></div>
+  <div class="moves" id="moves">Moves will appear here</div>
+  <button class="btn-dark" onclick="resign()">Resign</button>
+</div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+// YOUR FIREBASE - ALREADY FILLED
+const firebaseConfig = {
+  apiKey: "AIzaSyBxgXPAUuwhwxaO49IZfcJSCC8vuqmpYDU",
+  authDomain: "zed-gambit.firebaseapp.com",
+  databaseURL: "https://zed-gambit-default-rtdb.firebaseio.com",
+  projectId: "zed-gambit",
+  storageBucket: "zed-gambit.firebasestorage.app",
+  messagingSenderId: "608103767707",
+  appId: "1:608103767707:web:8ac5ced061782b5ea6b03e"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const badge = document.getElementById('fbBadge');
+db.ref('.info/connected').on('value', s=>{
+  if(s.val()===true){ badge.textContent='🟢 Firebase: Connected'; badge.className='badge green'; }
+  else { badge.textContent='🔴 Firebase: Not Connected'; badge.className='badge red'; }
+});
+
+let game = new Chess();
+let board = null;
+let myColor = 'white';
+let myRoomId = null;
+let myPlayerId = 'p_' + Math.random().toString(36).slice(2,9);
+let searching = false;
+
+function onDragStart(source, piece){
+  if(game.game_over()) return false;
+  if(!myRoomId) return false;
+  if((myColor==='white' && piece.search(/^b/)!==-1) || (myColor==='black' && piece.search(/^w/)!==-1)) return false;
+  if((game.turn()==='w' && myColor!=='white') || (game.turn()==='b' && myColor!=='black')) return false;
+}
+function onDrop(source, target){
+  let move = game.move({from:source,to:target,promotion:'q'});
+  if(move===null) return 'snapback';
+  updateStatus();
+  if(myRoomId) db.ref('rooms/'+myRoomId+'/fen').set(game.fen());
+  if(myRoomId) db.ref('rooms/'+myRoomId+'/lastMove').set(source+'-'+target);
+}
+function onSnapEnd(){ board.position(game.fen()); }
+function updateStatus(){
+  document.getElementById('turnLabel').textContent = game.turn()==='w' ? 'White to move' : 'Black to move';
+  document.getElementById('moves').textContent = game.history().join(' ');
+  if(game.in_checkmate()) document.getElementById('status').textContent = 'Checkmate! ' + (game.turn()==='w' ? 'Black wins' : 'White wins');
+  else if(game.in_draw()) document.getElementById('status').textContent = 'Draw!';
+}
+board = Chessboard('board',{draggable:true,position:'start',onDragStart:onDragStart,onDrop:onDrop,onSnapEnd:onSnapEnd});
+
+async function findOpponent(){
+  const name = document.getElementById('playerName').value || 'Player';
+  document.getElementById('status').textContent = '🔍 Searching for opponent...';
+  searching = true;
+  const roomsRef = db.ref('rooms');
+  const snap = await roomsRef.orderByChild('status').equalTo('waiting').limitToFirst(1).once('value');
+  let joined = false;
+  snap.forEach(child=>{
+    if(!joined && child.val().hostId !== myPlayerId){
+      joined = true;
+      myRoomId = child.key;
+      myColor = 'black';
+      db.ref('rooms/'+myRoomId).update({status:'playing', guestId:myPlayerId, guestName:name, fen:game.fen()});
+      listenToRoom();
+      document.getElementById('status').textContent = '✅ Opponent found! You are Black';
+      document.getElementById('roomInfo').textContent = 'Playing vs ' + child.val().hostName;
+    }
+  });
+  if(!joined){
+    const newRoom = roomsRef.push();
+    myRoomId = newRoom.key;
+    myColor = 'white';
+    await newRoom.set({status:'waiting', hostId:myPlayerId, hostName:name, guestId:'', guestName:'', fen:'start', createdAt:Date.now(), mode:'rapid-k20'});
+    listenToRoom();
+    document.getElementById('status').textContent = '⏳ Waiting for opponent... Share link with a friend';
+    document.getElementById('roomInfo').textContent = 'Room: ' + myRoomId;
+  }
+}
+function listenToRoom(){
+  db.ref('rooms/'+myRoomId).on('value', s=>{
+    const r = s.val(); if(!r) return;
+    if(r.status==='playing'){
+      if(r.hostId===myPlayerId) document.getElementById('status').textContent = '✅ Opponent joined! You are White';
+      if(r.fen && r.fen!=='start' && r.fen!==game.fen()){
+        game.load(r.fen); board.position(r.fen); updateStatus();
+      }
+    }
+  });
+}
+function cancelSearch(){
+  searching=false;
+  if(myRoomId) db.ref('rooms/'+myRoomId).remove();
+  myRoomId=null;
+  document.getElementById('status').textContent='Search cancelled';
+}
+function resign(){
+  if(myRoomId) db.ref('rooms/'+myRoomId).remove();
+  game.reset(); board.start(); updateStatus();
+  document.getElementById('status').textContent='You resigned. Tap Find Opponent to play again.';
+  myRoomId=null;
+}
+updateStatus();
+</script>
+</body>
+</html>
+
+
