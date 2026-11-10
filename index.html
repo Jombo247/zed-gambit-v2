@@ -93,7 +93,7 @@ let legalMoves = [];
 let gameOver = false;
 let thinking = false;
 let gameStarted = false;
-let whiteTime = 600; // 10:00
+let whiteTime = 600;
 let blackTime = 600;
 let clockTimer = null;
 let lastMove = null;
@@ -101,7 +101,6 @@ let moveCount = 0;
 let stockfish = null;
 let mode = 'computer';
 
-// Init Stockfish - engine only, does NOT control rules
 try {
   stockfish = STOCKFISH();
   stockfish.onmessage = function(e) {
@@ -157,8 +156,6 @@ function startGame(){
   document.getElementById('startBox').style.display = 'none';
   document.getElementById('turnInfo').textContent = 'Game Started! Your move - White.';
   startClock();
-  // If you are Black, Stockfish (White) moves first
-  if (mode === 'computer' && false) { /* you are always White */ }
 }
 
 function resignGame(){
@@ -228,7 +225,7 @@ function render(){
 function clickSquare(sq){
   if (!gameStarted) { alert('⏸️ Press START first!\n\nGame not started. Clocks are PAUSED.'); return; }
   if (gameOver) return;
-  if (mode === 'computer' && game.turn() === 'b') return; // Stockfish turn, wait
+  if (mode === 'computer' && game.turn() === 'b') return;
   if (selected === sq) { selected=null; legalMoves=[]; render(); return; }
   if (selected) {
     let m = game.moves({square:selected, verbose:true}).find(x=>x.to===sq);
@@ -248,12 +245,10 @@ function clickSquare(sq){
 function doMove(from, to, promo, isEngine){
   let move = game.move({from:from, to:to, promotion:promo || 'q'});
   if (!move) return;
-  // +5s increment for player who just moved
   if (move.color === 'w') whiteTime += 5; else blackTime += 5;
   lastMove = {from:from, to:to};
   moveCount++;
   selected=null; legalMoves=[];
-  // Update moves list
   let list = document.getElementById('movesList');
   if (moveCount===1) list.textContent='';
   list.textContent += (move.color==='w' ? Math.ceil(moveCount/2)+'. ' : '') + move.san + ' ';
@@ -275,7 +270,6 @@ function doMove(from, to, promo, isEngine){
   document.getElementById('turnInfo').textContent = (game.turn()==='w' ? 'Your move - White' : 'Stockfish thinking... Black');
   updateClockDisplay();
 
-  // Stockfish moves ONLY after you moved and game is started
   if (mode === 'computer' && game.turn() === 'b' && !gameOver && gameStarted) {
     thinking = true;
     setTimeout(() => {
